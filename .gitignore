@@ -42,3 +42,7 @@ coverage/
 
 # OS caches
 .cache/
+
+# Raw downloaded research sources (kept locally for verification, never committed:
+# provider terms of use / size / redistribution concerns)
+research/sources/raw/
