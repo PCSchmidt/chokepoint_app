@@ -6,4 +6,5 @@
  * registry lives in sourceRegistry.ts.
  */
 
-export {};
+export * from "./chokepoints";
+export * from "./sourceRegistry";
