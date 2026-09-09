@@ -12,8 +12,8 @@ that every provider is suitable for commercial redistribution.
 
 | Capability | Candidate source | Initial use | Key risk | Terms decision |
 |---|---|---|---|---|
-| Live vessel positions | AISStream or another permitted AIS provider | Selected regional vessel observations | API terms, coverage, historical retention | **TBD** — research complete (2026-09-09, `research/ais-provider-research.md`): recommendation is AISStream with documented risk-acceptance; human decision pending |
-| Vessel classification | AIS message fields plus source metadata | Cargo/tanker/bulk filtering | Missing or incorrect classifications | **TBD** |
+| Live vessel positions | AISStream | Selected regional vessel observations | API terms, coverage, historical retention | **APPROVED (risk-accepted)** — no published data-use terms (verified 2026-09-09); accepted for non-commercial demo per ADR-0010 |
+| Vessel classification | AISStream `ShipStaticData` fields plus source metadata | Cargo/tanker/bulk filtering | Missing or incorrect classifications | **APPROVED (same source/decision as AISStream, ADR-0010)** |
 | Port/chokepoint context | OpenStreetMap / public geospatial sources | Port geometry and contextual map features | ODbL attribution and derived-database obligations | **TBD** |
 | Baseline fixtures | Synthetic tracks plus legally retained observations | Deterministic testing and demos | Must never be presented as live data | N/A — synthetic, labeled `SIMULATED` |
 | Air cargo positions | adsb.lol or another permitted feed | Later cargo-aircraft layer | Coverage, terms, operator classification | **TBD** (later phase) |
@@ -34,6 +34,18 @@ A source cannot enter production configuration until its record documents:
 - [ ] Coverage and known blind spots.
 - [ ] Failure behavior.
 - [ ] Removal plan if terms change.
+
+### 2.1 AISStream admission-gate record (completed 2026-09-09, ADR-0010)
+
+- [x] Terms and commercial status — **absence documented**: no data-use terms exist (verified); free; accepted as risk for non-commercial demo.
+- [x] Whether raw data may be stored — no written grant; **policy: short-TTL in-memory only (<= 72 h), never committed, never redistributed**.
+- [x] Whether normalized/derived data may be stored — no written grant; **policy: derived aggregates and normalized observations only**.
+- [x] Required attribution — none stated; **courtesy attribution "Live AIS via AISStream.io" + coverage caveat** (§15).
+- [x] Rate limits and quotas — VERIFIED: 3 conns/account, 3 conns/IP, 1 subscription update/s, 200-MMSI filters, bounding-box subscriptions required; Sept 2026 uncompressed-bandwidth caps.
+- [x] Acceptable caching duration — **<= 72 h in-memory** (self-imposed; no provider rule exists).
+- [x] Coverage and known blind spots — global community receivers claimed; blind spots UNDOCUMENTED; to be measured per chokepoint empirically (Phase 2, needs account).
+- [x] Failure behavior — VERIFIED: no SLA, no replay, drops on slow consumers, documented reconnect guidance; treat gaps as normal operation.
+- [x] Removal plan if terms change — swap adapter, fall back to fixture/NOAA/DMA historical replay; paid provider as last resort (ADR-0010).
 
 ## 3. Keyless-first strategy (§6.2)
 
@@ -67,7 +79,7 @@ Verified findings for the §6.1 gate (primary pages only; anything not verifiabl
 - **Recommendation (research-level)**: admit AISStream as the first live provider for the portfolio demo, with: honest "no published terms" documentation, minimal raw retention (short-TTL in-memory buffer, never committed), courtesy attribution, backend-only key, and provider-swappability via the Phase 1 adapter interface.
 - **Consequence for chokepoint selection**: Suez/Malacca would be live-only (no free historical baselines); US/Danish waters unlock free historical replay for baselines.
 
-**The admission decision remains TBD** — it requires the human risk-acceptance decision for the absent terms (see section 5, item 1).
+**The admission decision is MADE (2026-09-09): AISStream admitted as a documented risk acceptance (ADR-0010).** Conditions: raw messages never committed or redistributed, short-TTL in-memory retention (<= 72 h), server-side key only, courtesy attribution, provider kept swappable, removal plan = fixture/historical replay fallback. Singapore/Malacca and Suez are live-only (owner accepted).
 
 ## 4. Licensing and attribution (§15)
 

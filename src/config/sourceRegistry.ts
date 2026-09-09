@@ -36,22 +36,27 @@ export interface SourceRegistryRecord {
 
 export const SOURCE_REGISTRY: readonly SourceRegistryRecord[] = [
   {
+    // Admitted 2026-09-09 as a documented risk acceptance (ADR-0010): no
+    // published data-use terms; accepted for the non-commercial portfolio demo
+    // with in-memory-only retention, no raw redistribution, and server-side key.
     sourceId: "aisstream",
-    label: "AISStream (or alternative permitted AIS provider)",
+    label: "AISStream (first admitted live AIS provider, risk-accepted)",
     capability: "live-vessel-positions",
-    admissionStatus: "candidate",
-    termsDecision: "TBD",
+    admissionStatus: "admitted",
+    termsDecision: "approved",
     candidateProvider: "AISStream",
-    keyRisk: "API terms, coverage, historical retention",
+    keyRisk: "No published data-use terms (verified absence); no history; live-only",
     keylessUsable: false,
   },
   {
+    // Same provider and the same ADR-0010 decision; classification fields come
+    // from ShipStaticData messages.
     sourceId: "ais-classification",
-    label: "AIS message fields plus source metadata",
+    label: "AISStream ShipStaticData fields (vessel classification)",
     capability: "vessel-classification",
-    admissionStatus: "candidate",
-    termsDecision: "TBD",
-    candidateProvider: "AIS provider (same as positions)",
+    admissionStatus: "admitted",
+    termsDecision: "approved",
+    candidateProvider: "AISStream",
     keyRisk: "Missing or incorrect classifications",
     keylessUsable: false,
   },

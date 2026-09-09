@@ -79,9 +79,10 @@ completion claims. Claims here must match the repository.
 - Real geofence coordinates for all three chokepoints — candidate polygons
   under research (`research/geofence-candidates.md`), pending review by the
   designated owner; placeholders still blocked from computation (ADR-0007).
-- AIS provider terms decision — research complete, recommendation delivered;
-  awaiting human risk-acceptance of AISStream's absent data-use terms
-  (§6.1, §20 step 3).
+- ~~AIS provider terms decision~~ — **DECIDED 2026-09-09 (ADR-0010)**:
+  AISStream admitted as a documented risk acceptance (no published data-use
+  terms); three MVP chokepoints unchanged (Suez/Malacca live-only, accepted);
+  account creation approved as a Phase 2 action.
 - No live source adapter exists (by design until the terms decision).
 - Rendering of health states (Phase 1 criterion "render correctly") waits for
   the Phase 3 UI; the machine and statuses are implemented and tested.

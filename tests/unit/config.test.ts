@@ -56,11 +56,21 @@ describe("chokepoint registry", () => {
 });
 
 describe("source registry", () => {
-  it("has no admitted sources and every terms decision is TBD (§6.1)", () => {
-    expect(admittedSources()).toHaveLength(0);
+  it("admits exactly the AISStream pair (ADR-0010) and defers everything else", () => {
+    expect(admittedSources().map((s) => s.sourceId).sort()).toEqual(["ais-classification", "aisstream"]);
     for (const s of SOURCE_REGISTRY) {
-      expect(s.termsDecision).toBe("TBD");
-      expect(s.admissionStatus).not.toBe("admitted");
+      if (s.sourceId === "aisstream" || s.sourceId === "ais-classification") {
+        expect(s.admissionStatus).toBe("admitted");
+        expect(s.termsDecision).toBe("approved");
+      } else {
+        expect(s.termsDecision).toBe("TBD");
+        expect(s.admissionStatus).not.toBe("admitted");
+      }
     }
+  });
+
+  it("the admitted source is not keyless (server-side key required, §14.1)", () => {
+    const ais = SOURCE_REGISTRY.find((s) => s.sourceId === "aisstream")!;
+    expect(ais.keylessUsable).toBe(false);
   });
 });
