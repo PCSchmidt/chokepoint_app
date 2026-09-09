@@ -1,0 +1,37 @@
+# Chokepoint
+
+Provenance-aware transportation intelligence for global maritime chokepoints.
+Every observation, metric, and generated answer carries an explicit truth state
+(`OBSERVED` / `DERIVED` / `SIMULATED` / `UNKNOWN`) and provenance.
+
+**Status:** Phase 0/1 scaffold — fixture mode only. No live provider
+integration, no LLM integration. See `STATUS.md` for what is actually built and
+`CHOKEPOINT-PLAN.md` for the full plan.
+
+## Commands
+
+```bash
+npm install       # install dev dependencies
+npm run dev       # vite dev server
+npm run build     # tsc --noEmit + vite build
+npm test          # vitest (deterministic domain tests, SIMULATED fixtures)
+npm run lint      # type-level lint (tsc --noEmit)
+```
+
+## Current state
+
+- The app runs entirely on checked-in `SIMULATED` fixtures — no credentials, no
+  network calls (§6.2, §16.1).
+- The three MVP chokepoints are configured with placeholder geofences that are
+  blocked from any membership computation until reviewed coordinates land.
+- Cesium globe, analytics engine, agent/evaluator, and voice are deliberately
+  deferred to later phases (§17).
+
+## Key documents
+
+- `CHOKEPOINT-PLAN.md` — planning baseline (source of truth)
+- `CONTRACT.md` — canonical data contracts
+- `DATA_SOURCES.md` — source matrix and admission gate (all terms decisions TBD)
+- `AGENTS.md` — generator/evaluator contract
+- `SECURITY.md` — secrets, proxy, and privacy rules
+- `STATUS.md` — measured progress log
