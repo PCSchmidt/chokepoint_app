@@ -43,6 +43,18 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Geofence registry machinery (§5.4, ADR-0007)
+
+- `src/data/geofences.ts`: full §5.4 reviewed-geofence record (id, purpose,
+  geometry version, CRS, effective date, inclusion rule, review owner,
+  source/rationale), ring validation (reject, never clamp), even-odd ray-casting
+  membership, and a metrics-compatible membership predicate.
+- `REVIEWED_GEOFENCE_REGISTRY` is EMPTY by design: production membership stays
+  blocked until the review owner (ChrisSchmidt/PCSchmidt) approves candidate
+  geometry from `research/geofence-candidates.md`.
+- Candidate research complete for all six fences (12 tests cover the machinery
+  with a synthetic test-reviewed polygon only).
+
 ## Phase 2 progress (fixture-mode, non-geometric slice)
 
 - Track segmentation (`src/analytics/tracks.ts`, §5.3): gap-based segmentation,
