@@ -15,3 +15,4 @@ export * from "./provenance";
 export * from "./fixtureAdapter";
 export * from "./geofences";
 export * from "./ais";
+export * from "./aisStreamAdapter";

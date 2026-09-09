@@ -3,7 +3,7 @@
 This file records measured progress and known limitations, not optimistic
 completion claims. Claims here must match the repository.
 
-**Phase 0 complete. Phase 1 complete. Phase 2: component metrics, baseline comparison, and event detector complete; evaluation report artifact remains.**
+**Phase 0 complete. Phase 1 complete. Phase 2 COMPLETE (incl. §12.6 evaluation report and the live AISStream adapter — live data flows behind the server-side key; UI rendering remains Phase 3).**
 
 ## Actually built (Phase 0/1)
 
@@ -43,6 +43,28 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Live AIS adapter (AISStream transport)
+
+- `src/data/aisStreamAdapter.ts`: full §5.1 lifecycle over a real WebSocket —
+  subscription with bounding boxes DERIVED from the reviewed fences and the
+  documented message-type filter, exponential-health integration via the
+  Phase 1 state machine, bounded in-memory buffer (max 5000 records, 72h TTL,
+  never persisted — ADR-0010), dedup + canonical ordering on read.
+- Coordinate-order pitfall handled explicitly: the provider's BoundingBoxes are
+  **[lon, lat]** pairs (verified from aisstream/example) while our rings are
+  [lat, lon]; `boundingBoxesFromFences()` converts and is tested against the
+  swapped-values failure mode.
+- Key hygiene (§14.1): the key is host-supplied, appears ONLY in the
+  subscription payload, and never in attribution/status/diagnostics/logs.
+  Missing key -> honest UNAVAILABLE with a fixture-fallback hint (§6.2).
+- Transport is injected: all tests use a fake socket; **no test touches the
+  network**, so CI remains keyless.
+- `scripts/aisstream-smoke.ts` + `npm run smoke` (LOCAL ONLY, real key +
+  network): bounded smoke window reporting accepted/rejected counts and
+  candidate records per chokepoint bbox for §6.1 coverage evidence.
+- Phase 2 exit criteria now fully met, including the §12.6 evaluation artifact
+  (see the Baselines section and `evaluation-reports/`).
+
 ## Baseline comparison + event detector (Phase 2 near-complete)
 
 - `src/analytics/baselines.ts` (`baseline-comparison-v1`, §7/§8.4): like-metric
@@ -65,8 +87,10 @@ completion claims. Claims here must match the repository.
   five-scenario suite (ground truth documented in-file) demonstrating TP/FP/FN
   accounting — 3 TP, 1 FN (a real queue on an insufficient baseline, correctly
   refused), 0 FP — plus an over-firing case showing precision degradation.
-- Remaining for Phase 2 exit: packaging these results into the first
-  reproducible evaluation report artifact (§12.6, §20 step 8).
+- ~~Remaining for Phase 2 exit~~ — DONE: `npm run eval`
+  (scripts/run-evaluation.ts) regenerates `evaluation-reports/` from the same
+  shared labeled scenarios the tests assert; report committed with documented
+  known failures (precision 1.0, recall 0.75, F1 0.857 on the v1 suite).
 
 ## AIS normalization (Phase 1 deliverable complete)
 

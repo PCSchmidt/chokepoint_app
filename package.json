@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "eval": "tsx scripts/run-evaluation.ts"
+    "eval": "tsx scripts/run-evaluation.ts",
+    "smoke": "tsx scripts/aisstream-smoke.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
