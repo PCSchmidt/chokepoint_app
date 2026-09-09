@@ -1,0 +1,35 @@
+# CI for Chokepoint (CHOKEPOINT-PLAN.md §17 Phase 5 includes CI; this basic
+# workflow is added early so the fixture-mode contract stays green on push).
+# Fixture mode requires no credentials (§6.2, §16.1).
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-level lint (tsc --noEmit)
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Build
+        run: npm run build
