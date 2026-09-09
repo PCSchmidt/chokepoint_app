@@ -40,21 +40,48 @@ const TEST_FENCE: ReviewedGeofence = {
 };
 
 describe("ADR-0007 guard", () => {
-  it("every production chokepoint geofence is still placeholder and BLOCKED", () => {
+  it("production fences are reviewed v1 and membership works", () => {
     for (const c of CHOKEPOINT_REGISTRY) {
       for (const g of c.geofences) {
-        expect(g.geometryStatus).toBe("placeholder");
-        expect(() => geofenceMembership(g, 33.6, -118.2)).toThrow(/blocked/);
+        expect(g.geometryStatus).toBe("reviewed");
+        const ring = g.geometry.kind === "polygon" ? g.geometry.ring : undefined;
+        if (!ring) throw new Error("reviewed fences must be polygons");
+        const centroidLat = ring.reduce((s: number, v: readonly [number, number]) => s + v[0], 0) / ring.length;
+        const centroidLon = ring.reduce((s: number, v: readonly [number, number]) => s + v[1], 0) / ring.length;
+        const result = geofenceMembership(g, centroidLat, centroidLon);
+        expect(result.inside).toBe(true);
+        expect(result.geometryVersion).toBe(g.geometryVersion);
       }
     }
   });
 
-  it("the reviewed registry is empty until the review owner approves candidates", () => {
-    expect(REVIEWED_GEOFENCE_REGISTRY).toHaveLength(0);
-    expect(() => {
-      const candidate = { ...TEST_FENCE, geometryStatus: "reviewed" as const };
-      void candidate;
-    }).not.toThrow(); // machinery accepts reviewed fences; only registry emptiness is asserted
+  it("still blocks placeholder geometry at the point of use", () => {
+    const placeholder = { ...CHOKEPOINT_REGISTRY[0]!.geofences[0]!, geometryStatus: "placeholder" as const };
+    expect(() => geofenceMembership(placeholder, 33.6, -118.2)).toThrow(/blocked/);
+  });
+
+  it("the registry contains exactly the six reviewed v1 fences", () => {
+    expect(REVIEWED_GEOFENCE_REGISTRY.map((f) => f.id).sort()).toEqual(
+      [
+        "outer-anchorage",
+        "approach-corridor",
+        "strait-traffic-corridor",
+        "singapore-roadstead",
+        "gulf-of-suez-approach",
+        "port-said-approach",
+      ].sort()
+    );
+    for (const f of REVIEWED_GEOFENCE_REGISTRY) {
+      expect(f.reviewOwner).toBe("ChrisSchmidt (GitHub: PCSchmidt)");
+      expect(f.geometryVersion).toBe("2026-09-09-v1");
+    }
+  });
+
+  it("membership is verifiably spatial: points far away are outside every fence", () => {
+    for (const f of REVIEWED_GEOFENCE_REGISTRY) {
+      // Mid-Atlantic point is outside all three regions.
+      expect(geofenceMembership(f, 40.0, -40.0).inside).toBe(false);
+    }
   });
 });
 
@@ -138,7 +165,15 @@ describe("membership predicate for Phase 2 metrics", () => {
   });
 
   it("still throws for placeholder fences (metrics cannot silently use them)", () => {
-    const placeholder = CHOKEPOINT_REGISTRY[0]!.geofences[0]!;
+    const reviewed = CHOKEPOINT_REGISTRY[0]!.geofences[0]!;
+    const placeholder = {
+      ...reviewed,
+      geometryStatus: "placeholder" as const,
+      reviewOwner: null,
+      effectiveDate: null,
+      inclusionRule: null,
+      geometry: { kind: "placeholder-bbox" as const, minLat: 33, minLon: -119, maxLat: 34, maxLon: -118 },
+    };
     expect(() => membershipPredicate(placeholder)(observation.observation)).toThrow(/blocked/);
   });
 

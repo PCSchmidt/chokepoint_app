@@ -1,8 +1,8 @@
 # Geofence Candidate Geometry (CANDIDATE — NOT APPROVED)
 
-> **STATUS: CANDIDATE**
+> **STATUS: APPROVED (v1) — 2026-09-09, review owner ChrisSchmidt (GitHub: PCSchmidt), recorded in ADR-0011 and committed as reviewed geometry `2026-09-09-v1` in `src/config/chokepoints.ts`. Original CANDIDATE notes below are retained for provenance.**
 > **Review owner:** ChrisSchmidt (GitHub: PCSchmidt)
-> **Approved: NO.** This file contains *candidate* geofence polygon geometry assembled
+> **Approved at v1: YES (2026-09-09), including the known APPROX vertices.** This file contains *candidate* geofence polygon geometry assembled
 > from public sources for the three Chokepoint MVP regions (CHOKEPOINT-PLAN.md §2.1).
 >
 > **MUST NEVER be used for geofence-membership computation, entry/exit detection,

@@ -15,7 +15,7 @@
  * goal for a demo geofence (see ADR-0007: "not official boundaries").
  */
 
-import type { Geofence } from "../config/chokepoints";
+import { CHOKEPOINT_REGISTRY, type Geofence } from "../config/chokepoints";
 
 /** An ordered ring of [lat, lon] pairs, WGS84 (EPSG:4326). */
 export type PolygonRing = ReadonlyArray<readonly [number, number]>;
@@ -110,6 +110,13 @@ export function pointInPolygon(lat: number, lon: number, ring: PolygonRing): boo
  * Membership against a REVIEWED geofence. Throws for placeholder/candidate
  * geometry — the ADR-0007 guard, enforced here at the point of use.
  */
+function polygonOf(fence: Geofence | ReviewedGeofence): PolygonRing {
+  const record = fence as Partial<ReviewedGeofence> & Partial<Geofence>;
+  if (record.polygon !== undefined) return record.polygon;
+  if (record.geometry !== undefined && record.geometry.kind === "polygon") return record.geometry.ring;
+  throw new Error(`geofence "${String(fence.id)}" has no polygon geometry`);
+}
+
 export function geofenceMembership(
   fence: Geofence | ReviewedGeofence,
   lat: number,
@@ -121,12 +128,11 @@ export function geofenceMembership(
         "until a reviewer commits reviewed geometry (ADR-0007, plan §5.4)"
     );
   }
-  const reviewed = fence as ReviewedGeofence;
-  validatePolygonRing(reviewed.polygon);
+  const ring = polygonOf(fence);
   return {
-    inside: pointInPolygon(lat, lon, reviewed.polygon),
-    geofenceId: reviewed.id,
-    geometryVersion: reviewed.geometryVersion,
+    inside: pointInPolygon(lat, lon, ring),
+    geofenceId: fence.id,
+    geometryVersion: fence.geometryVersion,
   };
 }
 
@@ -141,12 +147,44 @@ export function membershipPredicate(
 }
 
 /**
- * The geofence registry: reviewed fences currently registered for production
- * use. EMPTY by design until the review owner approves candidate geometry
- * (research/geofence-candidates.md). Phase 2 geofence-bound metrics read this
- * registry, never hardcoded polygons.
+ * Convert a config-level reviewed Geofence into the full §5.4 record.
+ * Throws on placeholder geometry, non-polygon geometry, or missing metadata.
  */
-export const REVIEWED_GEOFENCE_REGISTRY: readonly ReviewedGeofence[] = [];
+export function toReviewedGeofence(fence: Geofence): ReviewedGeofence {
+  if (fence.geometryStatus !== "reviewed") {
+    throw new Error(`geofence "${fence.id}" is not reviewed; it cannot be registered (ADR-0007)`);
+  }
+  if (fence.geometry.kind !== "polygon") {
+    throw new Error(`geofence "${fence.id}" reviewed status requires polygon geometry`);
+  }
+  if (fence.reviewOwner === null || fence.effectiveDate === null || fence.inclusionRule === null) {
+    throw new Error(`geofence "${fence.id}" reviewed status requires reviewOwner, effectiveDate, and inclusionRule`);
+  }
+  const record: ReviewedGeofence = {
+    id: fence.id,
+    purpose: fence.purpose,
+    geometryVersion: fence.geometryVersion,
+    geometryStatus: "reviewed",
+    reviewOwner: fence.reviewOwner,
+    coordinateReference: fence.coordinateReference,
+    effectiveDate: fence.effectiveDate,
+    inclusionRule: fence.inclusionRule,
+    sourceRationale: fence.rationale,
+    polygon: fence.geometry.ring,
+  };
+  validateReviewedGeofence(record);
+  return record;
+}
+
+/**
+ * The geofence registry: reviewed fences registered for production use, built
+ * from the chokepoint configuration (single source of truth — no polygon is
+ * ever defined twice). Registered v1 geometry: the six fences approved by the
+ * review owner on 2026-09-09 (ADR-0011). Phase 2 geofence-bound metrics read
+ * this registry, never hardcoded polygons.
+ */
+export const REVIEWED_GEOFENCE_REGISTRY: readonly ReviewedGeofence[] =
+  CHOKEPOINT_REGISTRY.flatMap((c) => c.geofences).map(toReviewedGeofence);
 
 export function getReviewedGeofence(id: string): ReviewedGeofence | undefined {
   return REVIEWED_GEOFENCE_REGISTRY.find((f) => f.id === id);

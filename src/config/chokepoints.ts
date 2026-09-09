@@ -5,12 +5,16 @@
  * registry, never conditionals scattered through UI code. Each profile is a
  * versioned configuration with provenance fields.
  *
- * GEOMETRY STATUS: every geofence below uses `geometryStatus: "placeholder"`.
- * The placeholder geometry is an intentionally coarse bounding box that marks
- * the general area ONLY. It has NOT been reviewed and MUST NOT be used for
- * geofence membership, entry/exit detection, or any metric computation.
- * Real coordinates require review and a versioned commit (§5.4, §20 step 4).
- * `assertUsableGeofence()` throws if placeholder geometry is consumed.
+ * GEOMETRY STATUS (v1, ADR-0011): all six geofences are REVIEWED geometry,
+ * approved 2026-09-09 by the review owner below. Candidate provenance lives in
+ * research/geofence-candidates.md (per-vertex [CFR]/[SCA]/[OSM]/[APPROX] tags);
+ * the strongest fences anchor on federal regulation (33 CFR) or the Suez Canal
+ * Authority Rules of Navigation; the Singapore corridor is all-approximate and
+ * flagged for a v2 re-derivation from IMO Ships' Routeing.
+ *
+ * Reviewed geometry is a coarse DEMO fence, never an official port boundary
+ * (§4.3 limitation, kept on every profile). Membership computation goes through
+ * src/data/geofences.ts, which re-validates status at the point of use.
  */
 
 export type TransportMode = "sea" | "air" | "land" | "rail";
@@ -28,34 +32,15 @@ export type GeofencePurpose =
   | "port-basin"
   | "canal-corridor";
 
-/** Coordinate reference system for geometry. Placeholder assumes WGS84. */
+/** Coordinate reference system for geometry. */
 export type CoordinateReference = "EPSG:4326";
 
-/**
- * A rectangle used ONLY as a review placeholder. Not a reviewed geofence.
- */
-export interface PlaceholderBoundingBox {
-  kind: "placeholder-bbox";
-  /** South-west corner [lat, lon]. */
-  minLat: number;
-  minLon: number;
-  maxLat: number;
-  maxLon: number;
-}
+/** An ordered ring of [lat, lon] pairs (WGS84). */
+export type PolygonRing = ReadonlyArray<readonly [number, number]>;
 
-export type GeofenceGeometry = PlaceholderBoundingBox;
-
-export interface Geofence {
-  id: string;
-  purpose: GeofencePurpose;
-  geometryVersion: string;
-  geometryStatus: "placeholder" | "reviewed";
-  /** Set once the geometry is reviewed; identifies the reviewer. */
-  reviewOwner: string | null;
-  geometry: GeofenceGeometry;
-  coordinateReference: CoordinateReference;
-  rationale: string;
-}
+export type GeofenceGeometry =
+  | { kind: "polygon"; ring: PolygonRing }
+  | { kind: "placeholder-bbox"; minLat: number; minLon: number; maxLat: number; maxLon: number };
 
 export interface ChokepointProfile {
   id: string;
@@ -70,12 +55,34 @@ export interface ChokepointProfile {
   limitations: string[];
 }
 
+export interface Geofence {
+  id: string;
+  purpose: GeofencePurpose;
+  geometryVersion: string;
+  geometryStatus: "placeholder" | "reviewed";
+  /** Named reviewer who approved this geometry version (null while placeholder). */
+  reviewOwner: string | null;
+  /** ISO date the geometry version took effect (null while placeholder). */
+  effectiveDate: string | null;
+  /** Plain-language inclusion rule (§5.4; null while placeholder). */
+  inclusionRule: string | null;
+  geometry: GeofenceGeometry;
+  coordinateReference: CoordinateReference;
+  rationale: string;
+}
+
 /**
- * Designated review owner for geofence geometry (plan §5.4: review owner is a
- * required field once geometry is reviewed). Per-geofence `reviewOwner` stays
- * null until candidate geometry (research/geofence-candidates.md) is approved.
+ * Designated review owner for geofence geometry (§5.4).
  */
 export const DESIGNATED_GEOMETRY_REVIEW_OWNER = "ChrisSchmidt (GitHub: PCSchmidt)";
+
+/** Inclusion rules by fence purpose (§5.4); membership uses even-odd ray casting. */
+export const INCLUSION_RULES = {
+  waitingCohort:
+    "Point-in-polygon (even-odd ray casting), no margin. All vessel states count; separating anchored from underway traffic is the metrics' responsibility, not the fence's.",
+  approachFlow:
+    "Point-in-polygon (even-odd ray casting), no margin. The fence approximates a traffic system (TSS lanes or SCA waiting areas); boundary edges are coarse, so single-crossing counts carry geometric uncertainty.",
+} as const;
 
 export function isPlaceholder(fence: Geofence): boolean {
   return fence.geometryStatus === "placeholder";
@@ -83,21 +90,19 @@ export function isPlaceholder(fence: Geofence): boolean {
 
 /**
  * Guard: refuse to run any geofence-membership logic against placeholder
- * geometry. Callers (Phase 2 analytics) must invoke this before use.
+ * geometry. Reviewed fences pass; membership re-validates in src/data/geofences.ts.
  */
 export function assertUsableGeofence(fence: Geofence): void {
   if (isPlaceholder(fence)) {
     throw new Error(
       `Geofence "${fence.id}" has placeholder geometry and is not reviewed. ` +
-        `Refusing to compute membership. Provide reviewed coordinates and set ` +
-        `geometryStatus: "reviewed" first (plan sections 5.4 and 20.4).`
+        `Refusing to compute membership (plan sections 5.4 and 20.4; ADR-0007).`
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// MVP chokepoint definitions (§2.1). Placeholder bounding boxes are coarse
-// orientation markers, NOT reviewed geofence polygons.
+// MVP chokepoint definitions (§2.1) with reviewed geometry v1 (ADR-0011).
 // ---------------------------------------------------------------------------
 
 export const LONG_BEACH_APPROACH: ChokepointProfile = {
@@ -105,38 +110,71 @@ export const LONG_BEACH_APPROACH: ChokepointProfile = {
   name: "Los Angeles / Long Beach",
   region: "North America",
   mode: "sea",
-  configVersion: "0.1.0",
-  revisedAt: "2026-09-01",
+  configVersion: "0.2.0",
+  revisedAt: "2026-09-09",
   geofences: [
     {
       id: "outer-anchorage",
       purpose: "waiting-cohort",
-      geometryVersion: "placeholder-0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
+      geometryVersion: "2026-09-09-v1",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-09",
+      inclusionRule: INCLUSION_RULES.waitingCohort,
       coordinateReference: "EPSG:4326",
-      // PLACEHOLDER: rough bounding box around the San Pedro Bay anchorages.
-      // Needs real reviewed polygon coordinates before use.
-      geometry: { kind: "placeholder-bbox", minLat: 33.55, minLon: -118.25, maxLat: 33.78, maxLon: -118.05 },
-      rationale: "Placeholder bounds marking the outer anchorage area; awaiting reviewed geofence.",
+      // Geometry v1: union of 33 CFR §110.214 Commercial Anchorages F and G
+      // corner coordinates [CFR], with two interpolated southern-edge vertices
+      // [APPROX]. See research/geofence-candidates.md §1 for per-vertex notes.
+      rationale: "Waiting cohort = fleet holding outside the federal breakwater in San Pedro Bay (anchorages F and G, VTIS-assigned). CFR corners verbatim; southern edge interpolated over open water.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [33.7182, -118.2052],
+          [33.7181, -118.1768],
+          [33.7181, -118.1331],
+          [33.6731, -118.1008],
+          [33.6382, -118.1167],
+          [33.67, -118.19],
+          [33.695, -118.225],
+          [33.7072, -118.2387],
+        ],
+      },
     },
     {
       id: "approach-corridor",
       purpose: "approach-flow",
-      geometryVersion: "placeholder-0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
+      geometryVersion: "2026-09-09-v1",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-09",
+      inclusionRule: INCLUSION_RULES.approachFlow,
       coordinateReference: "EPSG:4326",
-      // PLACEHOLDER: rough bounding box along the inbound approach.
-      geometry: { kind: "placeholder-bbox", minLat: 33.5, minLon: -118.4, maxLat: 33.75, maxLon: -118.1 },
-      rationale: "Placeholder bounds marking the approach corridor; awaiting reviewed geofence.",
+      // Geometry v1: convex hull over the 33 CFR §167.500–503 southern-approach
+      // TSS lane ends and separation-zone corners [CFR], with interpolated edge
+      // midpoints [APPROX]. See research/geofence-candidates.md §2.
+      rationale: "Approach flow = the official southern-approach TSS: separation zone plus northbound and southbound lanes converging on the precautionary area at the bay entrance. Lane ends are CFR-verbatim; the hull covers lanes and buffer water.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [33.5917, -118.2333],
+          [33.5917, -118.1917],
+          [33.5917, -118.15],
+          [33.4625, -118.0942],
+          [33.3333, -118.0383],
+          [33.325, -118.0758],
+          [33.3167, -118.1125],
+          [33.4542, -118.1729],
+        ],
+      },
     },
   ],
   supportedMetrics: ["vessel_count", "moving_fraction", "entry_count", "exit_count", "dwell_estimate"],
   limitations: [
     "AIS coverage does not represent every vessel",
     "geofence does not equal official port boundary",
-    "geofence coordinates are placeholders pending review",
+    "anchorage fence merges CFR Anchorages F and G and includes open water between them; the southern edge is interpolated, not a regulatory line",
+    "approach fence is a hull over the southern-approach TSS: it covers lanes, separation zone, and buffer water, and does not encode lane direction",
+    "CFR coordinates are NAD 83 (~1 m offset from WGS84; immaterial at this scale)",
   ],
 };
 
@@ -145,38 +183,79 @@ export const SINGAPORE_MALACCA_APPROACH: ChokepointProfile = {
   name: "Singapore / Malacca Approach",
   region: "Southeast Asia",
   mode: "sea",
-  configVersion: "0.1.0",
-  revisedAt: "2026-09-01",
+  configVersion: "0.2.0",
+  revisedAt: "2026-09-09",
   geofences: [
     {
       id: "strait-traffic-corridor",
       purpose: "approach-flow",
-      geometryVersion: "placeholder-0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
+      geometryVersion: "2026-09-09-v1",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-09",
+      inclusionRule: INCLUSION_RULES.approachFlow,
       coordinateReference: "EPSG:4326",
-      // PLACEHOLDER: rough bounding box around the Strait of Malacca approach
-      // toward Singapore. Needs real reviewed corridor geometry before use.
-      geometry: { kind: "placeholder-bbox", minLat: 1.0, minLon: 103.4, maxLat: 1.6, maxLon: 104.3 },
-      rationale: "Placeholder bounds marking the Malacca/Singapore approach; awaiting reviewed geofence.",
+      // Geometry v1 — WEAKEST FENCE: ALL 12 vertices [APPROX], estimated from
+      // the MPA anchorage chartlet and published strait scale; the IMO TSS
+      // limits were not digitized. Flagged for a future v2 re-derivation from
+      // IMO Ships' Routeing. See research/geofence-candidates.md §3.
+      rationale: "Corridor proxy along the Singapore Strait TSS between Singapore (north) and the Riau islands (south), WSW-ENE. Every vertex is approximate (+-0.05 deg); counts in this fence carry that uncertainty.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [1.26, 103.61],
+          [1.25, 103.75],
+          [1.265, 103.85],
+          [1.3, 103.95],
+          [1.27, 104.15],
+          [1.24, 104.28],
+          [1.13, 104.3],
+          [1.09, 104.18],
+          [1.13, 104.1],
+          [1.15, 103.96],
+          [1.11, 103.84],
+          [1.17, 103.62],
+        ],
+      },
     },
     {
       id: "singapore-roadstead",
       purpose: "waiting-cohort",
-      geometryVersion: "placeholder-0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
+      geometryVersion: "2026-09-09-v1",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-09",
+      inclusionRule: INCLUSION_RULES.waitingCohort,
       coordinateReference: "EPSG:4326",
-      // PLACEHOLDER: rough bounding box around the eastern anchorage areas.
-      geometry: { kind: "placeholder-bbox", minLat: 1.1, minLon: 103.8, maxLat: 1.35, maxLon: 104.1 },
-      rationale: "Placeholder bounds marking anchorage areas; awaiting reviewed geofence.",
+      // Geometry v1: buffered convex hull over OpenStreetMap
+      // seamark:type=anchorage polygons for the eastern anchorage cluster
+      // (MPA codes AEW/AEBA/AEBB/AEPA/AEGP etc.) [OSM-derived].
+      // ODbL 1.0: attribution required; share-alike applies to redistributed
+      // derived databases. See research/geofence-candidates.md §4.
+      rationale: "Waiting cohort = the eastern anchorage cluster east of ~103.85E (working, bunkering, petroleum, holding, laid-up anchorages). OSM tracing of the official MPA layout, +0.02 deg buffer, simplified.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [1.264, 103.844],
+          [1.237, 103.848],
+          [1.213, 103.89],
+          [1.279, 104.103],
+          [1.3, 104.116],
+          [1.35, 104.076],
+          [1.368, 104.049],
+          [1.301, 103.876],
+          [1.286, 103.854],
+        ],
+      },
     },
   ],
   supportedMetrics: ["vessel_count", "moving_fraction", "entry_count", "exit_count", "dwell_estimate"],
   limitations: [
     "AIS coverage does not represent every vessel",
     "geofence does not equal official port boundary",
-    "geofence coordinates are placeholders pending review",
+    "strait-traffic-corridor vertices are ALL approximate (+-0.05 deg, estimated from the MPA chartlet, not digitized from IMO Ships' Routeing); counts there carry that uncertainty",
+    "singapore-roadstead is OSM-derived: ODbL attribution required, share-alike applies to redistributed derived databases",
+    "the corridor and roadstead fences overlap along the TSS; anchored-vs-underway separation must come from AIS state, not the fences",
   ],
 };
 
@@ -185,37 +264,78 @@ export const SUEZ_CANAL_APPROACHES: ChokepointProfile = {
   name: "Suez Canal Approaches",
   region: "Middle East / North Africa",
   mode: "sea",
-  configVersion: "0.1.0",
-  revisedAt: "2026-09-01",
+  configVersion: "0.2.0",
+  revisedAt: "2026-09-09",
   geofences: [
     {
       id: "gulf-of-suez-approach",
       purpose: "approach-flow",
-      geometryVersion: "placeholder-0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
+      geometryVersion: "2026-09-09-v1",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-09",
+      inclusionRule: INCLUSION_RULES.approachFlow,
       coordinateReference: "EPSG:4326",
-      // PLACEHOLDER: rough bounding box around the southern (Red Sea) approach.
-      geometry: { kind: "placeholder-bbox", minLat: 27.5, minLon: 33.2, maxLat: 29.9, maxLon: 33.6 },
-      rationale: "Placeholder bounds marking the southern approach; awaiting reviewed geofence.",
+      // Geometry v1: envelope with margins around SCA Rules of Navigation
+      // (2020) Art. 9 published features [SCA points; all vertices APPROX
+      // envelopes]: separation-zone buoys, V berths, East/West Waiting Areas,
+      // STS areas A/B, entrance buoys. Edges are inferred, not chart lines.
+      rationale: "Southern (Red Sea) approach where northbound convoys gather: bounds the whole SCA waiting/transfer system from ~29.59N to the canal entrance (~29.93N). Entry into the fence approximates arrival into the Suez waiting system.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [29.93, 32.545],
+          [29.93, 32.59],
+          [29.89, 32.6],
+          [29.74, 32.64],
+          [29.59, 32.61],
+          [29.59, 32.43],
+          [29.65, 32.385],
+          [29.73, 32.42],
+          [29.82, 32.48],
+          [29.87, 32.52],
+        ],
+      },
     },
     {
       id: "port-said-approach",
       purpose: "approach-flow",
-      geometryVersion: "placeholder-0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
+      geometryVersion: "2026-09-09-v1",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-09",
+      inclusionRule: INCLUSION_RULES.approachFlow,
       coordinateReference: "EPSG:4326",
-      // PLACEHOLDER: rough bounding box around the northern (Mediterranean) approach.
-      geometry: { kind: "placeholder-bbox", minLat: 31.2, minLon: 32.1, maxLat: 31.6, maxLon: 32.6 },
-      rationale: "Placeholder bounds marking the northern approach; awaiting reviewed geofence.",
+      // Geometry v1: envelope around SCA Rules of Navigation (2020) Art. 8
+      // published anchorage zones [SCA points; all vertices APPROX]:
+      // Northern Area zones 1-3, Southern Area C berths, trans-shipment areas.
+      // NOTE: SCA Zone 1 east limit contains an apparent source typo (a
+      // latitude repeated where a longitude is expected); treated as
+      // 32deg27.0'E pending chart verification.
+      rationale: "Northern (Mediterranean) approach where southbound convoys queue: bounds the SCA Northern and Southern anchorage areas and trans-shipment zones from ~31deg30'N down to just north of the Port Said coast.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [31.5, 32.29],
+          [31.5, 32.48],
+          [31.35, 32.48],
+          [31.34, 32.4],
+          [31.33, 32.34],
+          [31.33, 32.27],
+          [31.35, 32.26],
+          [31.4, 32.26],
+          [31.43, 32.28],
+        ],
+      },
     },
   ],
   supportedMetrics: ["vessel_count", "moving_fraction", "entry_count", "exit_count", "dwell_estimate"],
   limitations: [
     "AIS coverage does not represent every vessel",
     "geofence does not equal official canal authority boundaries",
-    "geofence coordinates are placeholders pending review",
+    "SCA publishes points, not outlines: fence edges are inferred envelopes around published buoy/berth coordinates and may touch the intertidal zone in places",
+    "one apparent SCA source typo (Zone 1 east limit) is treated as 32deg27.0'E pending chart verification",
+    "STS transfer occupancy can inflate waiting counts; vessel state must come from AIS, not the fence",
   ],
 };
 

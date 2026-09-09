@@ -39,19 +39,27 @@ describe("chokepoint registry", () => {
     }
   });
 
-  it("all current geofences are flagged placeholder and BLOCKED from use", () => {
-    for (const c of CHOKEPOINT_REGISTRY) {
-      for (const g of c.geofences) {
-        expect(isPlaceholder(g)).toBe(true);
-        expect(g.geometryStatus).toBe("placeholder");
-        expect(() => assertUsableGeofence(g)).toThrow(/placeholder/);
+  it("geometry v1 (ADR-0011): all six geofences are reviewed, owned, versioned, and usable", () => {
+    const all = CHOKEPOINT_REGISTRY.flatMap((c) => c.geofences);
+    expect(all).toHaveLength(6);
+    for (const g of all) {
+      expect(g.geometryStatus).toBe("reviewed");
+      expect(g.geometry.kind).toBe("polygon");
+      expect(g.reviewOwner).toBe("ChrisSchmidt (GitHub: PCSchmidt)");
+      expect(g.effectiveDate).toBe("2026-09-09");
+      expect(g.inclusionRule).toBeTruthy();
+      expect(() => assertUsableGeofence(g)).not.toThrow();
+      if (g.geometry.kind === "polygon") {
+        // Ring sanity: >= 4 vertices, valid WGS84 ranges (validated fully in geofences tests).
+        expect(g.geometry.ring.length).toBeGreaterThanOrEqual(4);
       }
     }
   });
 
-  it("reviewed geofences would pass the guard (guard contract test)", () => {
-    const reviewed = { ...CHOKEPOINT_REGISTRY[0]!.geofences[0]!, geometryStatus: "reviewed" as const, reviewOwner: "test" };
-    expect(() => assertUsableGeofence(reviewed)).not.toThrow();
+  it("the placeholder guard still blocks placeholder geometry (guard contract test)", () => {
+    const placeholder = { ...CHOKEPOINT_REGISTRY[0]!.geofences[0]!, geometryStatus: "placeholder" as const, reviewOwner: null, effectiveDate: null, inclusionRule: null };
+    expect(isPlaceholder(placeholder)).toBe(true);
+    expect(() => assertUsableGeofence(placeholder)).toThrow(/placeholder/);
   });
 });
 
