@@ -1,0 +1,251 @@
+{
+  "reportVersion": "evaluation-report-v1",
+  "generatedAt": "2026-09-09T18:11:07.479Z",
+  "evaluationClock": "2026-09-09T16:00:00Z",
+  "command": "npm run eval",
+  "datasetManifest": [
+    {
+      "file": "classification-change.json",
+      "fixtureId": "classification-change",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 4
+    },
+    {
+      "file": "conflicting-sources.json",
+      "fixtureId": "conflicting-sources",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 2
+    },
+    {
+      "file": "duplicates.json",
+      "fixtureId": "duplicates",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 8
+    },
+    {
+      "file": "malformed-inputs.json",
+      "fixtureId": "malformed-inputs",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 8
+    },
+    {
+      "file": "missing-intervals.json",
+      "fixtureId": "missing-intervals",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 4
+    },
+    {
+      "file": "normal-transit.json",
+      "fixtureId": "normal-transit",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 5
+    },
+    {
+      "file": "out-of-order.json",
+      "fixtureId": "out-of-order",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 5
+    },
+    {
+      "file": "port-entry-exit.json",
+      "fixtureId": "port-entry-exit",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 6
+    },
+    {
+      "file": "source-outage.json",
+      "fixtureId": "source-outage",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 3
+    },
+    {
+      "file": "stale-cache-fallback.json",
+      "fixtureId": "stale-cache-fallback",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 3
+    },
+    {
+      "file": "stationary-anchorage.json",
+      "fixtureId": "stationary-anchorage",
+      "truthState": "SIMULATED",
+      "simulated": true,
+      "provenance": {
+        "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+        "providerId": "simulated-fixture",
+        "licenseId": "CC0-1.0-synthetic"
+      },
+      "observationCount": 5
+    }
+  ],
+  "fixtureProvenance": "All fixtures are SIMULATED synthetic data (truthState SIMULATED, generatedBy chokepoint synthetic fixture generator). No real AIS data is used anywhere in this evaluation.",
+  "metricDefinitions": {
+    "formulas": {
+      "moving_fraction": "moving-fraction-v1",
+      "dwell_estimate": "dwell-estimate-v1",
+      "entry_exit": "entry-exit-v1",
+      "vessel_count": "vessel-count-v1",
+      "baseline_comparison": "baseline-comparison-v1",
+      "event_detector": "event-detector-v1",
+      "detector_metrics": "detector-metrics-v1"
+    },
+    "classification": "ais-classification-v1",
+    "rules": [
+      {
+        "eventType": "queue_buildup",
+        "metricType": "dwell_cohort_size",
+        "direction": "increase",
+        "relativeThreshold": 0.25,
+        "absoluteThreshold": 3
+      },
+      {
+        "eventType": "stoppage",
+        "metricType": "moving_fraction",
+        "direction": "decrease",
+        "relativeThreshold": 0.2,
+        "absoluteThreshold": 0.05
+      },
+      {
+        "eventType": "flow_surge",
+        "metricType": "entry_count",
+        "direction": "increase",
+        "relativeThreshold": 0.3,
+        "absoluteThreshold": 2
+      },
+      {
+        "eventType": "flow_drop",
+        "metricType": "entry_count",
+        "direction": "decrease",
+        "relativeThreshold": 0.3,
+        "absoluteThreshold": 2
+      }
+    ]
+  },
+  "scope": "long-beach-approach",
+  "scenarioCount": 5,
+  "detectedEvents": [
+    {
+      "eventId": "queue_buildup@long-beach-approach@2026-09-09T14:00:00Z",
+      "eventType": "queue_buildup",
+      "currentValue": 30,
+      "baselineValue": 10,
+      "absoluteChange": 20,
+      "relativeChange": 2,
+      "quality": {
+        "state": "fresh",
+        "coverageNote": "fired: |delta|=20 >= 3 and |relative|=2.000 >= 0.25, direction increase; thresholds from event-detector-v1"
+      }
+    },
+    {
+      "eventId": "stoppage@long-beach-approach@2026-09-09T14:00:00Z",
+      "eventType": "stoppage",
+      "currentValue": 0.5,
+      "baselineValue": 0.9,
+      "absoluteChange": -0.4,
+      "relativeChange": -0.4444444444444445,
+      "quality": {
+        "state": "fresh",
+        "coverageNote": "fired: |delta|=0.4 >= 0.05 and |relative|=0.444 >= 0.2, direction decrease; thresholds from event-detector-v1"
+      }
+    },
+    {
+      "eventId": "flow_surge@long-beach-approach@2026-09-09T14:00:00Z",
+      "eventType": "flow_surge",
+      "currentValue": 8,
+      "baselineValue": 2,
+      "absoluteChange": 6,
+      "relativeChange": 3,
+      "quality": {
+        "state": "fresh",
+        "coverageNote": "fired: |delta|=6 >= 2 and |relative|=3.000 >= 0.3, direction increase; thresholds from event-detector-v1"
+      }
+    }
+  ],
+  "metrics": {
+    "truePositives": 3,
+    "falsePositives": 0,
+    "falseNegatives": 1,
+    "trueNegatives": 1,
+    "precision": 1,
+    "recall": 0.75,
+    "f1": 0.8571428571428571,
+    "falsePositivesPerEntityHour": 0,
+    "meanDetectionLatencySeconds": 1600,
+    "formulaVersion": "detector-metrics-v1"
+  },
+  "knownFailures": [
+    {
+      "id": "KNOWN-1",
+      "scenario": "E",
+      "description": "A real queue buildup with a single-observation baseline does NOT fire. The detector refuses LOW_SAMPLE comparisons (§3.3); the labeled truth records the event, so it counts as a false negative. This is deliberate: claiming an event from a 1-observation baseline would violate the trust contract.",
+      "detected": false,
+      "countedAs": "false_negative"
+    },
+    {
+      "id": "KNOWN-2",
+      "scenario": "geometry",
+      "description": "The Malacca/Singapore strait-traffic-corridor fence is all-approximate (±0.05°, not digitized from IMO Ships' Routeing); entry/exit and vessel counts in that fence carry that geometric uncertainty until a v2 re-derivation (ADR-0011).",
+      "detected": null,
+      "countedAs": "geometry_limitation"
+    }
+  ]
+}
