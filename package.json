@@ -1,0 +1,19 @@
+{
+  "name": "chokepoint",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Provenance-aware transportation intelligence for global chokepoints (fixture-mode Phase 0/1)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
+  }
+}
