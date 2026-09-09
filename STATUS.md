@@ -3,7 +3,7 @@
 This file records measured progress and known limitations, not optimistic
 completion claims. Claims here must match the repository.
 
-**Phase 0 in progress. Phase 1 substantially complete (fixture-mode scope).**
+**Phase 0 complete. Phase 1 complete (fixture-mode scope incl. AIS normalization). Phase 2 component metrics complete; baselines/events/evaluation remain.**
 
 ## Actually built (Phase 0/1)
 
@@ -42,6 +42,23 @@ completion claims. Claims here must match the repository.
 - `npm run dev/build/test/lint` scripts; GitHub Actions CI (lint + test + build
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
+
+## AIS normalization (Phase 1 deliverable complete)
+
+- `src/data/ais.ts`: AISStream WebSocket frame → canonical TransportObservation.
+  Pure and keyless: no connection, no key reads (transport belongs to the future
+  live adapter). Verified frame shape against aisstream/example (2026-09-09).
+- Classification `ais-classification-v1`: ITU ship-type codes 70–79 →
+  cargo_vessel, 80–89 → tanker, other codes → confirmed non-freight (visible
+  context), code 0/missing → UNKNOWN (UNCLASSIFIED cohort). Bulk carriers are
+  NOT separable from cargo via type codes — documented, not invented (§2.1).
+- Per-entity classification cache merges ShipStaticData into later
+  PositionReports; the cache holds only the derived triple, never raw frames
+  (ADR-0010).
+- AIS sentinels handled per ITU-R M.1371: SOG 102.3, Heading 511, COG 360
+  mean "not available" and are OMITTED (missing ≠ zero, §3.3/§7.2).
+- Invalid coordinates, missing MMSI/time_utc, and unparseable timestamps are
+  rejected with reasons — never clamped (§3.3). 21 tests cover the normalizer.
 
 ## Geometry v1 + geofence-bound metrics (ADR-0011, 2026-09-09)
 
