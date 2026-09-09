@@ -60,9 +60,11 @@ const poll = setInterval(() => {
 
 await new Promise((resolve) => setTimeout(resolve, durationSeconds * 1000));
 clearInterval(poll);
-await adapter.disable();
 
+// Read records BEFORE disabling: getRecords() honestly serves nothing after
+// disable() (a Phase 1 contract), so reading first is required to count.
 const records = adapter.getRecords();
+await adapter.disable();
 const diagnostics = adapter.getDiagnostics();
 console.log("--- smoke results ---");
 console.log(JSON.stringify(diagnostics, null, 2));
