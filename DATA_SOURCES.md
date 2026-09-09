@@ -43,7 +43,7 @@ A source cannot enter production configuration until its record documents:
 - [x] Required attribution — none stated; **courtesy attribution "Live AIS via AISStream.io" + coverage caveat** (§15).
 - [x] Rate limits and quotas — VERIFIED: 3 conns/account, 3 conns/IP, 1 subscription update/s, 200-MMSI filters, bounding-box subscriptions required; Sept 2026 uncompressed-bandwidth caps.
 - [x] Acceptable caching duration — **<= 72 h in-memory** (self-imposed; no provider rule exists).
-- [x] Coverage and known blind spots — global community receivers claimed; blind spots UNDOCUMENTED; to be measured per chokepoint empirically (Phase 2, needs account).
+- [x] Coverage and known blind spots — **first empirical evidence 2026-09-09** (5-minute live smoke window, `research/smoke/smoke-run-2026-09-09.log`): Long Beach anchorage 22 / approach 14 candidate vessels; Singapore corridor 184 / roadstead 102; **Gulf of Suez 0 and Port Said 0**. Suez appears effectively uncovered by community receivers in a short window — treat Suez counts as UNKNOWN until longer windows prove otherwise (§3.3: missing data is not zero).
 - [x] Failure behavior — VERIFIED: no SLA, no replay, drops on slow consumers, documented reconnect guidance; treat gaps as normal operation.
 - [x] Removal plan if terms change — swap adapter, fall back to fixture/NOAA/DMA historical replay; paid provider as last resort (ADR-0010).
 

@@ -43,6 +43,24 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Live smoke evidence (first §6.1 coverage data, 2026-09-09)
+
+- 5-minute live window (`research/smoke/smoke-run-2026-09-09.log`, key from
+  gitignored `.env`, never logged): **571 accepted records, 123 classified
+  entities, 36 freight-classified**.
+- Candidate vessels per chokepoint (bbox-level, NOT official coverage stats):
+  Long Beach anchorage 22, Long Beach approach 14, Singapore corridor 184,
+  Singapore roadstead 102, **Gulf of Suez 0, Port Said 0**.
+- Interpretation: LA/LB and Singapore have healthy community coverage; Suez
+  showed none in this short window — consistent with ADR-0010's live-only
+  caveat. Longer windows required before calling Suez "uncovered" (§6.1);
+  Phase 3 should present Suez with an explicit coverage-unknown state.
+- Integration bugs found and fixed by the smoke process (committed earlier):
+  AISStream BoundingBoxes are **[lat, lon]** (settled by live probe; the
+  provider README example is symmetric and cannot disambiguate) and frames are
+  **binary WebSocket frames** (binaryType=arraybuffer). The second run failed
+  due to a transient DNS outage (same window that broke a git push), not code.
+
 ## Live AIS adapter (AISStream transport)
 
 - `src/data/aisStreamAdapter.ts`: full §5.1 lifecycle over a real WebSocket —
