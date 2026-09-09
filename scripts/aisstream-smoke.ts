@@ -15,14 +15,28 @@
  *  - Exit code 0 on a clean close; 1 on failures.
  */
 
+import { readFileSync } from "node:fs";
 import { AisStreamAdapter, boundingBoxesFromFences } from "../src/data/aisStreamAdapter";
 import { toReviewedGeofence } from "../src/data/geofences";
 import { CHOKEPOINT_REGISTRY } from "../src/config/chokepoints";
 import type { TransportObservation } from "../src/data/observation";
 
-const key = process.env["AISSTREAM_API_KEY"];
+let key = process.env["AISSTREAM_API_KEY"];
 if (!key || key.trim() === "") {
-  console.error("AISSTREAM_API_KEY is not set. Export it (server-side only) and re-run.");
+  // Local convenience: read a gitignored .env in the repo root (server-side
+  // only, §14.1). The key is never printed, logged, or written anywhere.
+  try {
+    const envText = readFileSync(".env", "utf-8");
+    for (const line of envText.split("\n")) {
+      const m = /^\s*AISSTREAM_API_KEY\s*=\s*(.+)\s*$/.exec(line);
+      if (m) key = m[1]!.trim();
+    }
+  } catch {
+    // no .env file; fall through to the error below
+  }
+}
+if (!key || key.trim() === "") {
+  console.error("AISSTREAM_API_KEY is not set (env or .env). Export it (server-side only) and re-run.");
   process.exit(1);
 }
 
