@@ -43,13 +43,22 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Decisions recorded since the last status entry
+
+- Code is MIT (`LICENSE`, ADR-0009); data licensing stays per-source.
+- Working name confirmed as "Chokepoint" (ADR-0008).
+- Geofence geometry review owner designated: ChrisSchmidt (GitHub: PCSchmidt);
+  candidate polygons under research in `research/geofence-candidates.md`.
+- AIS provider terms research in progress in `research/ais-provider-research.md`
+  (portfolio-demo-only scope; account creation acceptable).
+
 ## Known open items
 
-- Real geofence coordinates for all three chokepoints — placeholder only, and
-  computation against placeholders throws; must be reviewed and versioned
-  before any membership-dependent metric (§5.4, §20 step 4).
-- AIS provider terms decision (AISStream or alternative) — TBD; blocks any live
-  integration (§6.1, §20 step 3).
+- Real geofence coordinates for all three chokepoints — candidate polygons
+  under research (`research/geofence-candidates.md`), pending review by the
+  designated owner; placeholders still blocked from computation (ADR-0007).
+- AIS provider terms decision (AISStream or alternative) — research in
+  progress; decision TBD (§6.1, §20 step 3).
 - No live source adapter exists (by design until the terms decision).
 - Rendering of health states (Phase 1 criterion "render correctly") waits for
   the Phase 3 UI; the machine and statuses are implemented and tested.

@@ -70,6 +70,13 @@ export interface ChokepointProfile {
   limitations: string[];
 }
 
+/**
+ * Designated review owner for geofence geometry (plan §5.4: review owner is a
+ * required field once geometry is reviewed). Per-geofence `reviewOwner` stays
+ * null until candidate geometry (research/geofence-candidates.md) is approved.
+ */
+export const DESIGNATED_GEOMETRY_REVIEW_OWNER = "ChrisSchmidt (GitHub: PCSchmidt)";
+
 export function isPlaceholder(fence: Geofence): boolean {
   return fence.geometryStatus === "placeholder";
 }

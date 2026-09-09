@@ -37,3 +37,9 @@ npm run lint      # type-level lint (tsc --noEmit)
 - `SECURITY.md` — secrets, proxy, and privacy rules
 - `STATUS.md` — measured progress log
 - `docs/decisions/` — architecture decision records (ADRs)
+- `research/` — candidate-geometry and provider-terms research (pre-decision)
+
+## License
+
+Code: MIT (see `LICENSE`). Data licenses are separate per source; all current
+fixture data is synthetic (`SIMULATED`, CC0-1.0 declared in provenance).
