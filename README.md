@@ -1,5 +1,7 @@
 # Chokepoint
 
+[![CI](https://github.com/PCSchmidt/chokepoint_app/actions/workflows/ci.yml/badge.svg)](https://github.com/PCSchmidt/chokepoint_app/actions/workflows/ci.yml)
+
 Provenance-aware transportation intelligence for global maritime chokepoints.
 Every observation, metric, and generated answer carries an explicit truth state
 (`OBSERVED` / `DERIVED` / `SIMULATED` / `UNKNOWN`) and provenance.
