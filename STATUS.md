@@ -43,6 +43,24 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Phase 2 progress (fixture-mode, non-geometric slice)
+
+- Track segmentation (`src/analytics/tracks.ts`, §5.3): gap-based segmentation,
+  zero interpolation (interpolatedPointCount always 0 — no synthetic positions),
+  worst-source-state aggregation.
+- Classification rules (`src/analytics/observations.ts`, §3.3): most recent
+  accepted observation wins; unreliable classifications are UNCLASSIFIED and
+  excluded from type-specific freight totals.
+- Metrics (`src/analytics/metrics.ts`, §7.2/§7.4): moving_fraction v1 (missing
+  speed excluded, never counted as stopped; empty eligibility = null + UNKNOWN)
+  and dwell_estimate v1 (injected membership predicate; min-observations and
+  max-gap constraints; conservative longest-visit split). Both are §5.5
+  DerivedMetrics with formula versions, explicit inputs, and provenance via
+  per-provider records (§3.2; multi-provider conflicts stay visible).
+- Geofence-bound metrics (vessel_count, entry/exit) deliberately not started —
+  they need reviewed geometry (ADR-0007). Baselines/events/evidence modules are
+  pinned stubs.
+
 ## Decisions recorded since the last status entry
 
 - Code is MIT (`LICENSE`, ADR-0009); data licensing stays per-source.
