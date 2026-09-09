@@ -1,0 +1,153 @@
+{
+  "fixtureId": "out-of-order",
+  "truthState": "SIMULATED",
+  "simulated": true,
+  "description": "SIMULATED: five observations delivered out of chronological order (indices 3,1,5,2,4), exercising deterministic reordering. Entirely synthetic; not real AIS data.",
+  "provenance": {
+    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "providerId": "simulated-fixture",
+    "licenseId": "CC0-1.0-synthetic"
+  },
+  "scenario": {
+    "expectedObservations": 5,
+    "deliveryOrderIsNotChronological": true,
+    "expectedFirstObservedAt": "2026-09-09T12:00:00Z"
+  },
+  "observations": [
+    {
+      "observationId": "out-of-order-003",
+      "entityId": "simulated-fixture:mmsi-567001006",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.26
+      },
+      "kinematics": {
+        "speedKnots": 13.0,
+        "headingDegrees": 30.0
+      },
+      "observedAt": "2026-09-09T12:10:00Z",
+      "receivedAt": "2026-09-09T12:11:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://out-of-order",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "out-of-order-rec-003"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "out-of-order-001",
+      "entityId": "simulated-fixture:mmsi-567001006",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.58,
+        "longitude": -118.3
+      },
+      "kinematics": {
+        "speedKnots": 13.0,
+        "headingDegrees": 30.0
+      },
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://out-of-order",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "out-of-order-rec-001"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "out-of-order-005",
+      "entityId": "simulated-fixture:mmsi-567001006",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.62,
+        "longitude": -118.22
+      },
+      "kinematics": {
+        "speedKnots": 13.0,
+        "headingDegrees": 30.0
+      },
+      "observedAt": "2026-09-09T12:20:00Z",
+      "receivedAt": "2026-09-09T12:21:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://out-of-order",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "out-of-order-rec-005"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "out-of-order-002",
+      "entityId": "simulated-fixture:mmsi-567001006",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.59,
+        "longitude": -118.28
+      },
+      "kinematics": {
+        "speedKnots": 13.0,
+        "headingDegrees": 30.0
+      },
+      "observedAt": "2026-09-09T12:05:00Z",
+      "receivedAt": "2026-09-09T12:06:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://out-of-order",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "out-of-order-rec-002"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "out-of-order-004",
+      "entityId": "simulated-fixture:mmsi-567001006",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.61,
+        "longitude": -118.24
+      },
+      "kinematics": {
+        "speedKnots": 13.0,
+        "headingDegrees": 30.0
+      },
+      "observedAt": "2026-09-09T12:15:00Z",
+      "receivedAt": "2026-09-09T12:16:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://out-of-order",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "out-of-order-rec-004"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    }
+  ]
+}

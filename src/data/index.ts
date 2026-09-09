@@ -1,9 +1,11 @@
 /**
- * Data module boundary (CHOKEPOINT-PLAN.md §9.2).
+ * Data module boundary (CHOKEPOINT-PLAN.md §9.2, src/data/).
  *
- * Source adapters, fixture loader, provenance, source health: Phase 1 (in progress).
- * Intentionally empty in Phase 0/1: implementation arrives in a later phase.
- * This file exists only to pin the module boundary.
+ * Phase 1 (in progress): canonical observation model, truth states, and the
+ * SIMULATED-labeled fixture loader. Source adapters, provenance records, and
+ * the source health state machine are remaining Phase 1 deliverables.
  */
 
-export {};
+export * from "./truthState";
+export * from "./observation";
+export * from "./fixtureLoader";
