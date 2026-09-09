@@ -33,5 +33,7 @@ npm run lint      # type-level lint (tsc --noEmit)
 - `CONTRACT.md` — canonical data contracts
 - `DATA_SOURCES.md` — source matrix and admission gate (all terms decisions TBD)
 - `AGENTS.md` — generator/evaluator contract
+- `NON_CLAIMS.md` — what the product does not claim (user-facing)
 - `SECURITY.md` — secrets, proxy, and privacy rules
 - `STATUS.md` — measured progress log
+- `docs/decisions/` — architecture decision records (ADRs)
