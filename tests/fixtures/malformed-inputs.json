@@ -1,0 +1,224 @@
+{
+  "fixtureId": "malformed-inputs",
+  "truthState": "SIMULATED",
+  "simulated": true,
+  "description": "SIMULATED: hardening fixture with six deliberately malformed records (latitude out of range, longitude out of range, invalid timestamp, invalid entityType, invalid heading, missing licenseId) alongside two valid records. The loader must reject exactly the malformed ones. Entirely synthetic; not real AIS data.",
+  "provenance": {
+    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "providerId": "simulated-fixture",
+    "licenseId": "CC0-1.0-synthetic"
+  },
+  "scenario": {
+    "expectedAccepted": 2,
+    "expectedRejected": 6,
+    "malformedObservationIds": [
+      "malformed-inputs-003",
+      "malformed-inputs-004",
+      "malformed-inputs-005",
+      "malformed-inputs-006",
+      "malformed-inputs-007",
+      "malformed-inputs-008"
+    ]
+  },
+  "observations": [
+    {
+      "observationId": "malformed-inputs-001",
+      "entityId": "simulated-fixture:mmsi-567001011",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.3
+      },
+      "kinematics": {
+        "speedKnots": 12.0,
+        "headingDegrees": 45.0
+      },
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-001"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-002",
+      "entityId": "simulated-fixture:mmsi-567001011",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.61,
+        "longitude": -118.28
+      },
+      "kinematics": {
+        "speedKnots": 12.5,
+        "headingDegrees": 45.0
+      },
+      "observedAt": "2026-09-09T12:05:00Z",
+      "receivedAt": "2026-09-09T12:06:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-002"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-003",
+      "entityId": "simulated-fixture:mmsi-567001012",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 95.0,
+        "longitude": -118.3
+      },
+      "kinematics": {},
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-003"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-004",
+      "entityId": "simulated-fixture:mmsi-567001012",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": 200.0
+      },
+      "kinematics": {},
+      "observedAt": "2026-09-09T12:01:00Z",
+      "receivedAt": "2026-09-09T12:02:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-004"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-005",
+      "entityId": "simulated-fixture:mmsi-567001013",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.3
+      },
+      "kinematics": {},
+      "observedAt": "not-a-timestamp",
+      "receivedAt": "2026-09-09T12:03:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-005"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-006",
+      "entityId": "simulated-fixture:mmsi-567001014",
+      "mode": "sea",
+      "entityType": "yacht",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.3
+      },
+      "kinematics": {},
+      "observedAt": "2026-09-09T12:03:00Z",
+      "receivedAt": "2026-09-09T12:04:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-006"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-007",
+      "entityId": "simulated-fixture:mmsi-567001014",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.3
+      },
+      "kinematics": {
+        "headingDegrees": 400
+      },
+      "observedAt": "2026-09-09T12:04:00Z",
+      "receivedAt": "2026-09-09T12:05:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "malformed-inputs-rec-007"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "malformed-inputs-008",
+      "entityId": "simulated-fixture:mmsi-567001015",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.3
+      },
+      "kinematics": {},
+      "observedAt": "2026-09-09T12:05:00Z",
+      "receivedAt": "2026-09-09T12:06:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://malformed-inputs",
+        "recordRef": "malformed-inputs-rec-008"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    }
+  ]
+}

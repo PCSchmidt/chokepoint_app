@@ -53,21 +53,31 @@ describe("fixture provenance guard", () => {
 });
 
 describe("checked-in fixture set (§12.2 scenarios)", () => {
-  it("loads all six scenario fixtures with only SIMULATED labels", async () => {
+  it("loads every scenario fixture with only SIMULATED labels", async () => {
     const { fixtures, files } = await loadFixtureDirectory(fixturesDir);
     expect(files.sort()).toEqual(
       [
+        "classification-change.json",
+        "conflicting-sources.json",
         "duplicates.json",
+        "malformed-inputs.json",
         "missing-intervals.json",
         "normal-transit.json",
         "out-of-order.json",
         "port-entry-exit.json",
+        "source-outage.json",
         "stationary-anchorage.json",
+        "stale-cache-fallback.json",
       ].sort()
     );
     for (const fixture of fixtures) {
       expect(fixture.truthState).toBe(REQUIRED_FIXTURE_TRUTH_STATE);
-      expect(fixture.rejected).toEqual([]);
+      // malformed-inputs intentionally rejects records; every other fixture is clean.
+      if (fixture.fixtureId === "malformed-inputs") {
+        expect(fixture.rejected.length).toBeGreaterThan(0);
+      } else {
+        expect(fixture.rejected).toEqual([]);
+      }
     }
   });
 
@@ -123,6 +133,45 @@ describe("checked-in fixture set (§12.2 scenarios)", () => {
     const { unique, duplicatesRemoved } = dedupeObservations(fx.observations);
     expect(unique).toHaveLength(4);
     expect(duplicatesRemoved).toBe(4);
+  });
+
+  it("classification-change: classification sequence matches the declared policy metadata", async () => {
+    const { fixtures } = await loadFixtureDirectory(fixturesDir);
+    const fx = fixtures.find((f) => f.fixtureId === "classification-change")!;
+    const sequence = fx.observations
+      .slice()
+      .sort((a, b) => a.observedAt.localeCompare(b.observedAt))
+      .map((o) => o.entityType);
+    expect(sequence).toEqual(["cargo_vessel", "cargo_vessel", "tanker", "unknown"]);
+  });
+
+  it("conflicting-sources: both provider records survive deduplication (§3.3)", async () => {
+    const { fixtures } = await loadFixtureDirectory(fixturesDir);
+    const fx = fixtures.find((f) => f.fixtureId === "conflicting-sources")!;
+    expect(fx.observations).toHaveLength(2);
+    const { unique } = dedupeObservations(fx.observations);
+    expect(unique).toHaveLength(2);
+    const providers = new Set(unique.map((o) => o.source.providerId));
+    expect(providers).toEqual(new Set(["simulated-fixture", "simulated-fixture-b"]));
+    // The two records disagree on position and both stay visible.
+    const [a, b] = unique as [typeof unique[number], typeof unique[number]];
+    expect(a.position).not.toEqual(b.position);
+  });
+
+  it("malformed-inputs: rejects exactly the six malformed records with reasons", async () => {
+    const { fixtures } = await loadFixtureDirectory(fixturesDir);
+    const fx = fixtures.find((f) => f.fixtureId === "malformed-inputs")!;
+    expect(fx.observations).toHaveLength(2);
+    expect(fx.rejected).toHaveLength(6);
+    const reasons = fx.rejected.map((r) => r.reason).join("\n");
+    expect(reasons).toMatch(/invalid latitude/);
+    expect(reasons).toMatch(/invalid longitude/);
+    expect(reasons).toMatch(/invalid observedAt/);
+    expect(reasons).toMatch(/invalid entityType/);
+    expect(reasons).toMatch(/headingDegrees/);
+    expect(reasons).toMatch(/licenseId/);
+    // Every rejected record keeps its id for diagnostics.
+    for (const r of fx.rejected) expect(r.observationId).toBeTruthy();
   });
 
   it("out-of-order: fixture arrives shuffled and canonical ordering fixes it", async () => {

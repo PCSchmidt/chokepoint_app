@@ -1,0 +1,72 @@
+{
+  "fixtureId": "conflicting-sources",
+  "truthState": "SIMULATED",
+  "simulated": true,
+  "description": "SIMULATED: two simulated providers report the same physical vessel at the same instant with different positions; both records must remain visible (plan section 3.3: conflicting observations stay in the evidence record). Entirely synthetic; not real AIS data.",
+  "provenance": {
+    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "providerId": "simulated-fixture",
+    "licenseId": "CC0-1.0-synthetic"
+  },
+  "scenario": {
+    "expectedObservations": 2,
+    "expectedUniqueAfterDedupe": 2,
+    "note": "same physical vessel, two provider identities; conflict resolution is a Phase 2 analytics concern"
+  },
+  "observations": [
+    {
+      "observationId": "conflicting-sources-001",
+      "entityId": "simulated-fixture:mmsi-567001010",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.6,
+        "longitude": -118.22
+      },
+      "kinematics": {
+        "speedKnots": 12.0,
+        "headingDegrees": 70.0
+      },
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://conflicting-sources",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "conflict-a-1"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "conflicting-sources-002",
+      "entityId": "simulated-fixture-b:mmsi-567001010",
+      "mode": "sea",
+      "entityType": "cargo_vessel",
+      "position": {
+        "latitude": 33.58,
+        "longitude": -118.25
+      },
+      "kinematics": {
+        "speedKnots": 13.0,
+        "headingDegrees": 75.0
+      },
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture-b",
+        "endpointId": "fixture://conflicting-sources",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "conflict-b-1"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    }
+  ]
+}
