@@ -3,7 +3,7 @@
 This file records measured progress and known limitations, not optimistic
 completion claims. Claims here must match the repository.
 
-**Phase 0 complete. Phase 1 complete (fixture-mode scope incl. AIS normalization). Phase 2 component metrics complete; baselines/events/evaluation remain.**
+**Phase 0 complete. Phase 1 complete. Phase 2: component metrics, baseline comparison, and event detector complete; evaluation report artifact remains.**
 
 ## Actually built (Phase 0/1)
 
@@ -42,6 +42,31 @@ completion claims. Claims here must match the repository.
 - `npm run dev/build/test/lint` scripts; GitHub Actions CI (lint + test + build
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
+
+## Baseline comparison + event detector (Phase 2 near-complete)
+
+- `src/analytics/baselines.ts` (`baseline-comparison-v1`, §7/§8.4): like-metric
+  comparison (same type AND unit enforced), absolute + relative change,
+  direction, null-or-LOW_SAMPLE -> UNKNOWN (never a confident estimate, §3.3),
+  zero-baseline relative change documented as undefined, parent quality state
+  propagates. The comparison is itself a §5.5 DerivedMetric whose inputs are
+  the two parent metric ids.
+- `src/analytics/events.ts` (`event-detector-v1`, §4.5/§17): versioned rule
+  records (§4.3 data-driven) — queue_buildup (dwell cohort increase),
+  stoppage (moving fraction decrease), flow_surge / flow_drop (entry count).
+  Fires only when BOTH relative and absolute thresholds are met; UNKNOWN
+  comparisons never fire; detector-level default sample floor of 3 observations
+  per side (§12.3 minimum sample behavior). Events carry NO causal or
+  explanatory text — explanation belongs to the Phase 4 evaluator (§8, §14.4).
+- `src/analytics/detectorMetrics.ts` (`detector-metrics-v1`, §12.3): precision,
+  recall, F1, false positives per entity-hour, and mean detection latency with
+  one-to-one labeled matching (closest match within a window).
+- `tests/evaluation/detector.evaluation.test.ts`: a labeled, deterministic
+  five-scenario suite (ground truth documented in-file) demonstrating TP/FP/FN
+  accounting — 3 TP, 1 FN (a real queue on an insufficient baseline, correctly
+  refused), 0 FP — plus an over-firing case showing precision degradation.
+- Remaining for Phase 2 exit: packaging these results into the first
+  reproducible evaluation report artifact (§12.6, §20 step 8).
 
 ## AIS normalization (Phase 1 deliverable complete)
 

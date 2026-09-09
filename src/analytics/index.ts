@@ -10,3 +10,6 @@
 export * from "./tracks";
 export * from "./observations";
 export * from "./metrics";
+export * from "./baselines";
+export * from "./events";
+export * from "./detectorMetrics";
