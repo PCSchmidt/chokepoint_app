@@ -52,10 +52,17 @@ export const AISSTREAM_ADAPTER_ID = "aisstream-live";
 
 /**
  * Convert an internal [lat, lon] WGS84 ring to the provider's REQUIRED
- * bounding-box subscription format. The AISStream example sends
- * BoundingBoxes: [[[-180, -90], [180, 90]]] — that is [lon, lat] pairs.
- * Getting this backwards yields a silent global box or an empty stream, so it
- * is explicitly converted and tested.
+ * bounding-box subscription format.
+ *
+ * AISStream BoundingBoxes are **[lat, lon] pairs** — settled EMPIRICALLY on
+ * 2026-09-09 (see scripts/aisstream-debug.ts): a Singapore-strait box sent as
+ * [lon, lat] yields SubscriptionConfirmation then silence, while the same box
+ * as [lat, lon] yields PositionReports immediately. The provider's README
+ * example ([[-180,-90],[180,90]]) is symmetric and cannot disambiguate the
+ * order — do not "fix" this back to [lon, lat] based on that example. This is
+ * the third distinct lat/lon-order pitfall in this project (see the repo's
+ * lat/lon pitfall notes); the swapped order produces a silently empty stream,
+ * so the conversion is tested to fail loudly on the wrong orientation.
  */
 export function boundingBoxesFromFences(
   fences: readonly ReviewedGeofence[],
@@ -71,10 +78,10 @@ export function boundingBoxesFromFences(
       lons.push(v[1]);
     }
     const pad = Math.abs(paddingDegrees);
-    // Provider order: [lon, lat].
+    // Provider order: [lat, lon] (empirically verified, see header).
     boxes.push([
-      [Math.min(...lons) - pad, Math.min(...lats) - pad],
-      [Math.max(...lons) + pad, Math.max(...lats) + pad],
+      [Math.min(...lats) - pad, Math.min(...lons) - pad],
+      [Math.max(...lats) + pad, Math.max(...lons) + pad],
     ]);
   }
   return boxes;
@@ -176,6 +183,20 @@ export class AisStreamAdapter implements SourceAdapter<TransportObservation> {
     this.health = new SourceHealthStateMachine(this.id, { freshWithinSeconds: this.freshWithinSeconds });
   }
 
+  /**
+   * AISStream sends BINARY WebSocket frames carrying UTF-8 JSON. Depending on
+   * the platform the payload arrives as string, ArrayBuffer, Uint8Array, or
+   * Blob — decode all of them (String(blob) is "[object Blob]", which is the
+   * failure mode that consumed the first smoke run).
+   */
+  private decodeFrame(data: unknown): string {
+    if (typeof data === "string") return data;
+    if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
+    if (data instanceof Uint8Array) return new TextDecoder().decode(data);
+    if (data instanceof Blob) return "(unhandled blob frame; set binaryType to arraybuffer)";
+    return "";
+  }
+
   /** True when no key was supplied (honest-unavailable mode, §6.2). */
   get isKeyless(): boolean {
     return this.apiKey === undefined || this.apiKey.trim() === "";
@@ -188,13 +209,12 @@ export class AisStreamAdapter implements SourceAdapter<TransportObservation> {
   private ingestMessage(data: unknown, receivedAt: string): { accepted: number; rejected: number } {
     let accepted = 0;
     let rejected = 0;
-    let parsed: unknown = data;
-    if (typeof parsed === "string") {
-      try {
-        parsed = JSON.parse(parsed);
-      } catch {
-        return { accepted: 0, rejected: 1 };
-      }
+    const text = this.decodeFrame(data);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return { accepted: 0, rejected: 1 };
     }
     const result = this.normalizer.normalize(parsed, receivedAt);
     if (result.kind === "observation") {
@@ -264,7 +284,14 @@ export class AisStreamAdapter implements SourceAdapter<TransportObservation> {
       return this.failureResult("no AISStream API key configured (honest empty state, §6.2)");
     }
 
-    const factory = this.socketFactory ?? ((url: string) => new WebSocket(url) as unknown as AisStreamSocket);
+    const factory =
+      this.socketFactory ??
+      ((url: string) => {
+        const ws = new WebSocket(url) as unknown as AisStreamSocket & { binaryType?: string };
+        // BINARY frames carry the JSON; without this, Node delivers Blobs.
+        ws.binaryType = "arraybuffer";
+        return ws as unknown as AisStreamSocket;
+      });
     this.socket = factory(AISSTREAM_ENDPOINT_ID);
 
     this.openListener = () => {

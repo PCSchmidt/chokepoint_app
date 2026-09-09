@@ -72,19 +72,25 @@ function makeAdapter(overrides: Partial<ConstructorParameters<typeof AisStreamAd
   return { adapter, socket };
 }
 
-describe("bounding-box conversion (coordinate-order pitfall)", () => {
-  it("emits [lon, lat] pairs in the PROVIDER's order, not our internal [lat, lon]", () => {
+describe("bounding-box conversion (coordinate-order pitfall — empirically settled)", () => {
+  it("emits [lat, lon] pairs in the PROVIDER's order (verified by live probe 2026-09-09)", () => {
+    // Empirical evidence: [lon, lat] => SubscriptionConfirmation then silence;
+    // [lat, lon] => PositionReports. The provider README example is symmetric
+    // and cannot disambiguate — this test pins the empirically verified order.
     const boxes = boundingBoxesFromFences([ANCHORAGE]);
     expect(boxes).toHaveLength(1);
-    const [[minLon, minLat], [maxLon, maxLat]] = boxes[0]!;
+    const [[first0, first1], [second0, second1]] = boxes[0]!;
     // Anchorage ring spans lat 33.638..33.718, lon -118.239..-118.101 (+/- 0.05 pad).
-    expect(minLon).toBeCloseTo(-118.2387 - 0.05, 6);
-    expect(maxLon).toBeCloseTo(-118.1008 + 0.05, 6);
-    expect(minLat).toBeCloseTo(33.6382 - 0.05, 6);
-    expect(maxLat).toBeCloseTo(33.7182 + 0.05, 6);
-    // Guard against the swapped pitfall: lon values must be the NEGATIVE ones.
-    expect(minLon).toBeLessThan(0);
-    expect(maxLat).toBeGreaterThan(33);
+    // FIRST element of each pair is LATITUDE; second is LONGITUDE.
+    expect(first0).toBeCloseTo(33.6382 - 0.05, 6);
+    expect(first1).toBeCloseTo(-118.2387 - 0.05, 6);
+    expect(second0).toBeCloseTo(33.7182 + 0.05, 6);
+    expect(second1).toBeCloseTo(-118.1008 + 0.05, 6);
+    // Guards against the swapped pitfall: negative values sit in the LONGITUDE slot.
+    expect(first1).toBeLessThan(0);
+    expect(second1).toBeLessThan(0);
+    expect(first0).toBeGreaterThan(33);
+    expect(second0).toBeGreaterThan(33);
   });
 
   it("requires at least one fence", () => {
@@ -149,6 +155,21 @@ describe("lifecycle and subscription (§5.1)", () => {
     expect(adapter.getRecords()).toEqual([]);
     const diagnostics = adapter.getDiagnostics();
     expect(diagnostics.rejectedTotal).toBe(2);
+    await adapter.disable();
+  });
+
+  it("decodes BINARY frames (ArrayBuffer) — the provider sends binary UTF-8 JSON", async () => {
+    const { adapter, socket } = makeAdapter();
+    await adapter.enable(CONTEXT);
+    socket.emit("open");
+    CLOCK.t = "2026-09-09T14:01:00Z";
+    const payload = JSON.stringify(positionFrame(567001099, 33.68, -118.17, "2026-09-09 14:00:50.000 +0000 UTC"));
+    const bytes = new TextEncoder().encode(payload);
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    socket.emit("message", { data: buffer });
+    const records = adapter.getRecords();
+    expect(records).toHaveLength(1);
+    expect(records[0]!.entityId).toBe("aisstream:567001099");
     await adapter.disable();
   });
 
