@@ -12,7 +12,7 @@ that every provider is suitable for commercial redistribution.
 
 | Capability | Candidate source | Initial use | Key risk | Terms decision |
 |---|---|---|---|---|
-| Live vessel positions | AISStream or another permitted AIS provider | Selected regional vessel observations | API terms, coverage, historical retention | **TBD** (research in progress: `research/ais-provider-research.md`; inspiration repo gods-eye-view uses AISStream.io live) |
+| Live vessel positions | AISStream or another permitted AIS provider | Selected regional vessel observations | API terms, coverage, historical retention | **TBD** — research complete (2026-09-09, `research/ais-provider-research.md`): recommendation is AISStream with documented risk-acceptance; human decision pending |
 | Vessel classification | AIS message fields plus source metadata | Cargo/tanker/bulk filtering | Missing or incorrect classifications | **TBD** |
 | Port/chokepoint context | OpenStreetMap / public geospatial sources | Port geometry and contextual map features | ODbL attribution and derived-database obligations | **TBD** |
 | Baseline fixtures | Synthetic tracks plus legally retained observations | Deterministic testing and demos | Must never be presented as live data | N/A — synthetic, labeled `SIMULATED` |
@@ -57,6 +57,17 @@ research license) and **adsb.lol** (ODbL 1.0) for flights, and OpenStreetMap
 sources (ODbL 1.0) for geometry. This is context, not a terms decision: every
 provider's CURRENT terms still require verification against the §6.1 gate
 before admission.
+
+## 3.2 Live AIS research findings (2026-09-09 — full report in `research/ais-provider-research.md`)
+
+Verified findings for the §6.1 gate (primary pages only; anything not verifiable is marked UNVERIFIED in the report):
+
+- **AISStream.io**: free WebSocket API (VERIFIED), documented limits (3 connections/account, 3 per IP, 1 subscription update/s, 200-MMSI filters, mandatory bounding-box subscriptions), 25 message types including `ShipStaticData` (vessel classification field Chokepoint needs), no SLA, no replay, drops on slow consumers. Direct browser connections explicitly NOT permitted — key must stay server-side. **Still no data-use terms of any kind** (terms pages 404; only a personal-data privacy policy) — storage/caching/redistribution rules are UNVERIFIED *because they do not exist in writing*.
+- **Alternatives evaluated**: AISHub (free but requires operating a receiver and sharing your own raw feed back — infeasible for a software-only demo); ais.fm (**defunct** — domain lapsed to a personal blog); Datalastic (paid; "no derivative databases" clause conflicts with Chokepoint's storage model); MarineTraffic/Kpler (paid, quote-based). Historical baselines: NOAA MarineCadastre (US waters) and Danish DMA (Danish waters) free bulk CSVs; AISStream has NO history.
+- **Recommendation (research-level)**: admit AISStream as the first live provider for the portfolio demo, with: honest "no published terms" documentation, minimal raw retention (short-TTL in-memory buffer, never committed), courtesy attribution, backend-only key, and provider-swappability via the Phase 1 adapter interface.
+- **Consequence for chokepoint selection**: Suez/Malacca would be live-only (no free historical baselines); US/Danish waters unlock free historical replay for baselines.
+
+**The admission decision remains TBD** — it requires the human risk-acceptance decision for the absent terms (see section 5, item 1).
 
 ## 4. Licensing and attribution (§15)
 

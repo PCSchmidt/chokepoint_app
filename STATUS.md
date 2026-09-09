@@ -67,16 +67,21 @@ completion claims. Claims here must match the repository.
 - Working name confirmed as "Chokepoint" (ADR-0008).
 - Geofence geometry review owner designated: ChrisSchmidt (GitHub: PCSchmidt);
   candidate polygons under research in `research/geofence-candidates.md`.
-- AIS provider terms research in progress in `research/ais-provider-research.md`
-  (portfolio-demo-only scope; account creation acceptable).
+- AIS provider research COMPLETE (`research/ais-provider-research.md`,
+  2026-09-09): AISStream recommended for the portfolio demo with documented
+  risk-acceptance (it publishes no data-use terms); alternatives assessed
+  (AISHub infeasible, ais.fm defunct, Datalastic/MarineTraffic paid); free
+  historical baselines exist only for US (NOAA) and Danish (DMA) waters.
+  Admission decision pending with the human.
 
 ## Known open items
 
 - Real geofence coordinates for all three chokepoints — candidate polygons
   under research (`research/geofence-candidates.md`), pending review by the
   designated owner; placeholders still blocked from computation (ADR-0007).
-- AIS provider terms decision (AISStream or alternative) — research in
-  progress; decision TBD (§6.1, §20 step 3).
+- AIS provider terms decision — research complete, recommendation delivered;
+  awaiting human risk-acceptance of AISStream's absent data-use terms
+  (§6.1, §20 step 3).
 - No live source adapter exists (by design until the terms decision).
 - Rendering of health states (Phase 1 criterion "render correctly") waits for
   the Phase 3 UI; the machine and statuses are implemented and tested.
