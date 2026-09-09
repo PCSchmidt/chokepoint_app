@@ -43,6 +43,23 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Geometry v1 + geofence-bound metrics (ADR-0011, 2026-09-09)
+
+- All six candidate fences APPROVED by the review owner and committed as
+  reviewed geometry `2026-09-09-v1` in `src/config/chokepoints.ts` (per-vertex
+  provenance in `research/geofence-candidates.md`; weaknesses carried as
+  profile limitations).
+- `REVIEWED_GEOFENCE_REGISTRY` now contains the six fences (built from config,
+  single source of truth); membership re-validates status at point of use.
+- **vessel_count v1** (§7.1): unique classified entities with an accepted
+  observation inside the reviewed fence; UNCLASSIFIED entities excluded from
+  the count but reported in coverage; empty population = UNKNOWN.
+- **entry/exit v1** (§7.3): boundary crossings from consecutive observations;
+  gaps beyond maxGapSeconds are excluded from counts and reported as
+  uncertain — never silently counted.
+- All §7 component metrics except baseline comparison and the composite index
+  are now implemented and tested (111 tests).
+
 ## Geofence registry machinery (§5.4, ADR-0007)
 
 - `src/data/geofences.ts`: full §5.4 reviewed-geofence record (id, purpose,
@@ -88,9 +105,10 @@ completion claims. Claims here must match the repository.
 
 ## Known open items
 
-- Real geofence coordinates for all three chokepoints — candidate polygons
-  under research (`research/geofence-candidates.md`), pending review by the
-  designated owner; placeholders still blocked from computation (ADR-0007).
+- ~~Real geofence coordinates~~ — **DONE 2026-09-09 (ADR-0011)**: all six
+  fences approved and committed as reviewed geometry v1. Known weaknesses
+  (Malacca corridor all-approx, SCA Zone 1 typo) are recorded as limitations
+  and candidates for a v2.
 - ~~AIS provider terms decision~~ — **DECIDED 2026-09-09 (ADR-0010)**:
   AISStream admitted as a documented risk acceptance (no published data-use
   terms); three MVP chokepoints unchanged (Suez/Malacca live-only, accepted);
@@ -101,10 +119,9 @@ completion claims. Claims here must match the repository.
 
 ## Deliberately deferred (per §17 roadmap)
 
-- **Phase 2** — maritime analytics: track segmentation, geofence entry/exit,
-  moving fraction, dwell estimate, baseline comparison, event detector,
-  evaluation report. Blocked on reviewed geofence geometry for
-  membership-dependent metrics; non-geometric metrics could start on fixtures.
+- **Phase 2 remainder** — baseline comparison, event detector + §12.3
+  detector metrics, evaluation report. Component metrics (tracks,
+  classification, moving fraction, dwell, vessel count, entry/exit) are done.
 - **Phase 3** — Cesium globe, freight HUD, mission launcher, timeline/replay,
   evidence drawer, share-link state, health-state rendering.
 - **Phase 4** — agent/evaluator layer and voice (Decision 2, §19).

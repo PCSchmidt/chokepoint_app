@@ -20,9 +20,11 @@
  * `computedAt` is always supplied by the caller (deterministic, testable).
  */
 
-import type { TransportObservation } from "../data/observation";
+import type { EntityType, TransportObservation } from "../data/observation";
 import { provenanceForObservations, type ProvenanceRecord, FIXTURE_TRANSFORMATION_VERSION } from "../data/provenance";
+import { geofenceMembership, type ReviewedGeofence } from "../data/geofences";
 import type { TruthState } from "../data/truthState";
+import { FREIGHT_ENTITY_TYPES } from "./observations";
 
 /** The §5.5 derived metric model. */
 export interface DerivedMetric {
@@ -189,6 +191,181 @@ export function movingFraction(
       coverageNote: coverageParts.join("; "),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Vessel count (§7.1) — geofence-bound, requires REVIEWED geometry
+// ---------------------------------------------------------------------------
+
+export interface VesselCountOptions extends MetricBaseOptions {
+  /** A registered reviewed geofence (placeholder/candidate throws, ADR-0007). */
+  fence: ReviewedGeofence;
+  /** Classification allowlist (§7.1). Defaults to the maritime freight set. */
+  classificationAllowlist?: readonly EntityType[] | undefined;
+}
+
+/**
+ * Vessel count v1 (§7.1): the number of unique classified entities with at
+ * least one accepted observation inside the reviewed geofence during the
+ * window, restricted to the classification allowlist. Entities without a
+ * reliable classification are excluded from the count and reported as
+ * UNCLASSIFIED in the coverage note (§3.3) — never silently dropped.
+ *
+ * UI language contract: this is "observed vessels in the defined geofence",
+ * never "all vessels at the port".
+ */
+export function vesselCount(
+  observations: readonly TransportObservation[],
+  options: VesselCountOptions,
+): DerivedMetric {
+  const allowlist = options.classificationAllowlist ?? FREIGHT_ENTITY_TYPES;
+  const byEntity = new Map<string, TransportObservation[]>();
+  for (const o of sortedCopy(observations)) {
+    if (!inWindow(o, options.observationWindow)) continue;
+    const list = byEntity.get(o.entityId);
+    if (list) list.push(o);
+    else byEntity.set(o.entityId, [o]);
+  }
+
+  const inputs = new Set<string>();
+  const contributing: TransportObservation[] = [];
+  let counted = 0;
+  let unclassified = 0;
+  let outsideAllowlist = 0;
+
+  for (const entityId of [...byEntity.keys()].sort()) {
+    const records = byEntity.get(entityId)!;
+    const inside = records.some(
+      (o) => geofenceMembership(options.fence, o.position.latitude, o.position.longitude).inside
+    );
+    if (!inside) continue;
+    for (const o of records) inputs.add(o.observationId);
+    contributing.push(...records);
+    // Classification decided across the window via the cohort rules (§3.3):
+    const reliable = records[records.length - 1]!.quality.classification === "confirmed";
+    const entityType = records[records.length - 1]!.entityType;
+    if (!reliable) unclassified += 1;
+    else if (allowlist.includes(entityType)) counted += 1;
+    else outsideAllowlist += 1;
+  }
+
+  const scope = `geofence:${options.fence.id}@${options.fence.geometryVersion}`;
+  const coverageParts = [
+    `observed vessels in the defined geofence ${options.fence.id} (v${options.fence.geometryVersion})`,
+    `${unclassified} unclassified entity(ies) excluded from type-specific totals (§3.3)`,
+    `${outsideAllowlist} entity(ies) outside the classification allowlist (visible context only)`,
+  ];
+
+  return {
+    metricId: metricId("vessel_count", options.computedAt, scope),
+    metricType: "vessel_count",
+    scope,
+    value: counted,
+    unit: "entities",
+    computedAt: options.computedAt,
+    observationWindow: { ...options.observationWindow },
+    formulaVersion: "vessel-count-v1",
+    inputs: [...inputs].sort(),
+    quality: {
+      state: counted + unclassified + outsideAllowlist === 0 ? "unknown" : worstSourceState(contributing),
+      sampleCount: counted,
+      coverageNote: coverageParts.join("; "),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Entry/exit counts (§7.3) — geofence-bound, requires REVIEWED geometry
+// ---------------------------------------------------------------------------
+
+export interface EntryExitOptions extends MetricBaseOptions {
+  /** A registered reviewed geofence (placeholder/candidate throws, ADR-0007). */
+  fence: ReviewedGeofence;
+  /** Consecutive-observation gaps larger than this make crossings uncertain/excluded (§7.3). */
+  maxGapSeconds: number;
+  /** Restrict to these entity ids (e.g. the freight cohort). */
+  entityIds?: readonly string[] | undefined;
+}
+
+export interface CrossingCounts {
+  entries: DerivedMetric;
+  exits: DerivedMetric;
+  /** Crossings excluded because the observation gap was excessive (§7.3). */
+  uncertainCrossings: number;
+}
+
+/**
+ * Entry/exit v1 (§7.3): unique entities crossing the reviewed geofence
+ * boundary in a given direction during the window, based on consecutive
+ * accepted observations. Crossings whose observation gap exceeds
+ * maxGapSeconds are EXCLUDED from the counts and reported as uncertain —
+ * they are never silently counted.
+ */
+export function entryExitCounts(
+  observations: readonly TransportObservation[],
+  options: EntryExitOptions,
+): CrossingCounts {
+  if (!(options.maxGapSeconds > 0)) throw new Error("maxGapSeconds must be positive");
+  const allowed = options.entityIds === undefined ? null : new Set(options.entityIds);
+  const byEntity = new Map<string, TransportObservation[]>();
+  for (const o of sortedCopy(observations)) {
+    if (!inWindow(o, options.observationWindow)) continue;
+    if (allowed !== null && !allowed.has(o.entityId)) continue;
+    const list = byEntity.get(o.entityId);
+    if (list) list.push(o);
+    else byEntity.set(o.entityId, [o]);
+  }
+
+  let entries = 0;
+  let exits = 0;
+  let uncertain = 0;
+  const inputs = new Set<string>();
+  const contributing: TransportObservation[] = [];
+
+  for (const entityId of [...byEntity.keys()].sort()) {
+    const records = byEntity.get(entityId)!;
+    let previousInside: boolean | null = null;
+    let previousObservation: TransportObservation | null = null;
+    for (const o of records) {
+      const inside = geofenceMembership(options.fence, o.position.latitude, o.position.longitude).inside;
+      if (previousInside !== null && previousObservation !== null && inside !== previousInside) {
+        const gap = (Date.parse(o.observedAt) - Date.parse(previousObservation.observedAt)) / 1000;
+        if (gap > options.maxGapSeconds) {
+          uncertain += 1; // excluded from counts, visible as uncertain (§7.3)
+        } else {
+          if (inside) entries += 1;
+          else exits += 1;
+          inputs.add(previousObservation.observationId);
+          inputs.add(o.observationId);
+          contributing.push(previousObservation, o);
+        }
+      }
+      previousInside = inside;
+      previousObservation = o;
+    }
+  }
+
+  const scope = `geofence:${options.fence.id}@${options.fence.geometryVersion}`;
+  const coverage = `boundary crossings from consecutive accepted observations; gaps > ${options.maxGapSeconds}s excluded as uncertain; fence ${options.fence.id} v${options.fence.geometryVersion}`;
+
+  const build = (type: "entry_count" | "exit_count", value: number): DerivedMetric => ({
+    metricId: metricId(type, options.computedAt, scope),
+    metricType: type,
+    scope,
+    value,
+    unit: "crossings",
+    computedAt: options.computedAt,
+    observationWindow: { ...options.observationWindow },
+    formulaVersion: "entry-exit-v1",
+    inputs: [...inputs].sort(),
+    quality: {
+      state: value === 0 && uncertain === 0 && inputs.size === 0 ? "unknown" : worstSourceState(contributing),
+      sampleCount: value,
+      coverageNote: `${coverage}; ${uncertain} uncertain crossing(s) excluded`,
+    },
+  });
+
+  return { entries: build("entry_count", entries), exits: build("exit_count", exits), uncertainCrossings: uncertain };
 }
 
 // ---------------------------------------------------------------------------

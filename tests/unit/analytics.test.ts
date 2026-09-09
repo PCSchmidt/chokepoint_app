@@ -14,11 +14,13 @@ import { cohortByClassification, entityClassifications } from "../../src/analyti
 import {
   movingFraction,
   dwellEstimates,
+  vesselCount,
+  entryExitCounts,
   provenanceForMetricInputs,
   MOVING_FRACTION_FORMULA_VERSION,
   DWELL_FORMULA_VERSION,
 } from "../../src/analytics/metrics";
-import type { TransportObservation } from "../../src/data/observation";
+import { normalizeObservation, type TransportObservation } from "../../src/data/observation";
 
 const fixturesDir = path.resolve("tests/fixtures");
 
@@ -254,5 +256,156 @@ describe("provenance propagation (§3.2, §3.3)", () => {
     expect(new Set(records.map((r) => r.providerId))).toEqual(
       new Set(["simulated-fixture", "simulated-fixture-b"])
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Geofence-bound metrics (§7.1, §7.3) — unblocked by geometry v1 (ADR-0011)
+// ---------------------------------------------------------------------------
+
+import { CHOKEPOINT_REGISTRY } from "../../src/config/chokepoints";
+import { toReviewedGeofence } from "../../src/data/geofences";
+
+function reviewedFence(id: string) {
+  const fence = CHOKEPOINT_REGISTRY.flatMap((c) => c.geofences).find((g) => g.id === id);
+  if (!fence) throw new Error(`fence ${id} not found`);
+  return toReviewedGeofence(fence);
+}
+
+const synth = (id: string, lat: number, lon: number, minutes: number, speed = 12, entity = "simulated-fixture:mmsi-990000001") => {
+  const observed = new Date(Date.parse("2026-09-09T12:00:00Z") + minutes * 60000)
+    .toISOString()
+    .replace(".000Z", "Z");
+  const received = new Date(Date.parse(observed) + 30000).toISOString().replace(".000Z", "Z");
+  const result = normalizeObservation({
+    observationId: id,
+    entityId: entity,
+    mode: "sea",
+    entityType: "cargo_vessel",
+    position: { latitude: lat, longitude: lon },
+    kinematics: { speedKnots: speed },
+    observedAt: observed,
+    receivedAt: received,
+    source: { providerId: "simulated-fixture", endpointId: "fixture://synthetic", recordRef: id, licenseId: "CC0-1.0-synthetic" },
+    quality: { sourceState: "fresh", classification: "confirmed" },
+  });
+  if (!result.ok) throw new Error(`synthetic record ${id} must normalize: ${!result.ok ? result.reason : ""}`);
+  return result.observation;
+};
+
+describe("vessel count (§7.1, reviewed geometry)", () => {
+  const anchorage = reviewedFence("outer-anchorage");
+
+  it("counts unique entities with an accepted observation inside the fence", () => {
+    // Both positions inside the LB outer-anchorage ring (lat 33.638-33.718, lon -118.24..-118.10).
+    const observations = [
+      synth("vc-1", 33.68, -118.17, 0),
+      synth("vc-2", 33.69, -118.16, 10),
+      synth("vc-3", 33.70, -118.15, 20, 12, "simulated-fixture:mmsi-990000002"), // second entity
+    ];
+    const m = vesselCount(observations, {
+      ...BASE,
+      fence: anchorage,
+    });
+    expect(m.value).toBe(2);
+    expect(m.metricType).toBe("vessel_count");
+    expect(m.scope).toContain("outer-anchorage");
+    expect(m.scope).toContain("2026-09-09-v1");
+    expect(m.quality.coverageNote).toContain("observed vessels in the defined geofence");
+  });
+
+  it("excludes vessels outside the fence entirely", () => {
+    const observations = [
+      synth("vc-4", 33.68, -118.17, 0),   // inside
+      synth("vc-5", 33.30, -118.10, 10),  // far south, outside
+    ];
+    const m = vesselCount(observations, { ...BASE, fence: anchorage });
+    expect(m.value).toBe(1);
+  });
+
+  it("unclassified entities are excluded from the count and reported (§3.3)", () => {
+    const unknownVessel = synth("vc-6", 33.68, -118.17, 0, 12, "simulated-fixture:mmsi-990000003");
+    const unclassified: TransportObservation = {
+      ...unknownVessel,
+      quality: { ...unknownVessel.quality, classification: "unknown" },
+    };
+    const m = vesselCount([unclassified], { ...BASE, fence: anchorage });
+    expect(m.value).toBe(0);
+    expect(m.quality.coverageNote).toMatch(/1 unclassified entity\(ies\) excluded/);
+  });
+
+  it("empty in-fence population returns UNKNOWN, not zero-confidence counts", () => {
+    const m = vesselCount([synth("vc-7", 33.30, -118.10, 0)], { ...BASE, fence: anchorage });
+    expect(m.value).toBe(0);
+    expect(m.quality.state).toBe("unknown");
+  });
+
+  it("works against the other regional fences too (registry-driven, not hardcoded)", () => {
+    const suez = reviewedFence("gulf-of-suez-approach");
+    // Inside the Gulf of Suez envelope (lat ~29.6-29.93, lon ~32.4-32.6).
+    const m = vesselCount([synth("vc-8", 29.75, 32.50, 0)], { ...BASE, fence: suez });
+    expect(m.value).toBe(1);
+  });
+});
+
+describe("entry/exit counts (§7.3, reviewed geometry)", () => {
+  const anchorage = reviewedFence("outer-anchorage");
+
+  it("detects one inbound and one outbound crossing for a transit path", () => {
+    // Path: south (outside) -> inside -> inside -> north (outside).
+    const observations = [
+      synth("ee-1", 33.55, -118.17, 0),  // outside (south)
+      synth("ee-2", 33.68, -118.17, 10), // inside (entry)
+      synth("ee-3", 33.70, -118.17, 20), // inside
+      synth("ee-4", 33.80, -118.17, 30), // outside (north, exit)
+    ];
+    const result = entryExitCounts(observations, { ...BASE, fence: anchorage, maxGapSeconds: 3600 });
+    expect(result.entries.value).toBe(1);
+    expect(result.exits.value).toBe(1);
+    expect(result.uncertainCrossings).toBe(0);
+    expect(result.entries.formulaVersion).toBe("entry-exit-v1");
+  });
+
+  it("staying inside produces no crossings", () => {
+    const observations = [
+      synth("ee-5", 33.68, -118.17, 0),
+      synth("ee-6", 33.69, -118.16, 10),
+      synth("ee-7", 33.70, -118.15, 20),
+    ];
+    const result = entryExitCounts(observations, { ...BASE, fence: anchorage, maxGapSeconds: 3600 });
+    expect(result.entries.value).toBe(0);
+    expect(result.exits.value).toBe(0);
+  });
+
+  it("excessive gaps mark crossings uncertain and EXCLUDE them from counts (§7.3)", () => {
+    const observations = [
+      synth("ee-8", 33.55, -118.17, 0),                 // outside
+      synth("ee-9", 33.68, -118.17, 90),                // inside, but 90 min gap > 3600s? no, 5400s > 3600s
+    ];
+    const result = entryExitCounts(observations, { ...BASE, fence: anchorage, maxGapSeconds: 3600 });
+    expect(result.uncertainCrossings).toBe(1);
+    expect(result.entries.value).toBe(0);
+    expect(result.entries.quality.coverageNote).toMatch(/1 uncertain crossing\(s\) excluded/);
+  });
+
+  it("multiple entities are counted independently (unique crossings)", () => {
+    const observations = [
+      synth("ee-a", 33.68, -118.17, 0, 12, "simulated-fixture:mmsi-990000010"),
+      synth("ee-b", 33.55, -118.17, 10, 12, "simulated-fixture:mmsi-990000010"), // exit
+      synth("ee-c", 33.68, -118.17, 20, 12, "simulated-fixture:mmsi-990000011"), // entry (starts inside -> no entry event)
+    ];
+    const result = entryExitCounts(observations, { ...BASE, fence: anchorage, maxGapSeconds: 3600 });
+    expect(result.exits.value).toBe(1);
+    expect(result.entries.value).toBe(0);
+  });
+
+  it("works against the port-said fence (registry-driven)", () => {
+    const portSaid = reviewedFence("port-said-approach");
+    const observations = [
+      synth("ee-d", 31.20, 32.35, 0),   // south of the fence, outside
+      synth("ee-e", 31.42, 32.35, 10),  // inside
+    ];
+    const result = entryExitCounts(observations, { ...BASE, fence: portSaid, maxGapSeconds: 3600 });
+    expect(result.entries.value).toBe(1);
   });
 });
