@@ -1,0 +1,153 @@
+{
+  "fixtureId": "sg-normal-transit",
+  "truthState": "SIMULATED",
+  "simulated": true,
+  "description": "SIMULATED: single tanker in transit inside the reviewed singapore-roadstead fence v1, five ordered positions. Entirely synthetic; not real AIS data.",
+  "provenance": {
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
+    "providerId": "simulated-fixture",
+    "licenseId": "CC0-1.0-synthetic"
+  },
+  "scenario": {
+    "expectedObservations": 5,
+    "movement": "transit",
+    "note": "positions membership-verified inside singapore-roadstead@2026-09-09-v1"
+  },
+  "observations": [
+    {
+      "observationId": "sg-normal-transit-001",
+      "entityId": "simulated-fixture:mmsi-567002001",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.25,
+        "longitude": 103.9
+      },
+      "kinematics": {
+        "speedKnots": 9.5,
+        "headingDegrees": 75.0
+      },
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-normal-transit",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-normal-transit-rec-001"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-normal-transit-002",
+      "entityId": "simulated-fixture:mmsi-567002001",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.26,
+        "longitude": 103.92
+      },
+      "kinematics": {
+        "speedKnots": 9.5,
+        "headingDegrees": 75.0
+      },
+      "observedAt": "2026-09-09T12:06:00Z",
+      "receivedAt": "2026-09-09T12:07:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-normal-transit",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-normal-transit-rec-002"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-normal-transit-003",
+      "entityId": "simulated-fixture:mmsi-567002001",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.27,
+        "longitude": 103.96
+      },
+      "kinematics": {
+        "speedKnots": 9.5,
+        "headingDegrees": 75.0
+      },
+      "observedAt": "2026-09-09T12:12:00Z",
+      "receivedAt": "2026-09-09T12:13:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-normal-transit",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-normal-transit-rec-003"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-normal-transit-004",
+      "entityId": "simulated-fixture:mmsi-567002001",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.28,
+        "longitude": 103.98
+      },
+      "kinematics": {
+        "speedKnots": 9.5,
+        "headingDegrees": 75.0
+      },
+      "observedAt": "2026-09-09T12:18:00Z",
+      "receivedAt": "2026-09-09T12:19:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-normal-transit",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-normal-transit-rec-004"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-normal-transit-005",
+      "entityId": "simulated-fixture:mmsi-567002001",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.29,
+        "longitude": 104.05
+      },
+      "kinematics": {
+        "speedKnots": 9.5,
+        "headingDegrees": 75.0
+      },
+      "observedAt": "2026-09-09T12:24:00Z",
+      "receivedAt": "2026-09-09T12:25:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-normal-transit",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-normal-transit-rec-005"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    }
+  ]
+}

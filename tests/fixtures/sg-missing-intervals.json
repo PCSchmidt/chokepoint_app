@@ -1,0 +1,129 @@
+{
+  "fixtureId": "sg-missing-intervals",
+  "truthState": "SIMULATED",
+  "simulated": true,
+  "description": "SIMULATED: one tanker inside the reviewed singapore-roadstead fence v1 with a 3-hour position gap between reports 2 and 3. Entirely synthetic; not real AIS data.",
+  "provenance": {
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
+    "providerId": "simulated-fixture",
+    "licenseId": "CC0-1.0-synthetic"
+  },
+  "scenario": {
+    "expectedObservations": 4,
+    "expectedLargestGapSeconds": 10800,
+    "gapBetweenObservations": [
+      2,
+      3
+    ]
+  },
+  "observations": [
+    {
+      "observationId": "sg-missing-intervals-001",
+      "entityId": "simulated-fixture:mmsi-567002004",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.26,
+        "longitude": 103.92
+      },
+      "kinematics": {
+        "speedKnots": 8.0,
+        "headingDegrees": 70.0
+      },
+      "observedAt": "2026-09-09T12:00:00Z",
+      "receivedAt": "2026-09-09T12:01:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-missing-intervals",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-missing-intervals-rec-001"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-missing-intervals-002",
+      "entityId": "simulated-fixture:mmsi-567002004",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.265,
+        "longitude": 103.93
+      },
+      "kinematics": {
+        "speedKnots": 8.5,
+        "headingDegrees": 70.0
+      },
+      "observedAt": "2026-09-09T12:10:00Z",
+      "receivedAt": "2026-09-09T12:11:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-missing-intervals",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-missing-intervals-rec-002"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-missing-intervals-003",
+      "entityId": "simulated-fixture:mmsi-567002004",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.28,
+        "longitude": 103.96
+      },
+      "kinematics": {
+        "speedKnots": 9.0,
+        "headingDegrees": 72.0
+      },
+      "observedAt": "2026-09-09T15:10:00Z",
+      "receivedAt": "2026-09-09T15:11:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-missing-intervals",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-missing-intervals-rec-003"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    },
+    {
+      "observationId": "sg-missing-intervals-004",
+      "entityId": "simulated-fixture:mmsi-567002004",
+      "mode": "sea",
+      "entityType": "tanker",
+      "position": {
+        "latitude": 1.285,
+        "longitude": 103.98
+      },
+      "kinematics": {
+        "speedKnots": 9.2,
+        "headingDegrees": 72.0
+      },
+      "observedAt": "2026-09-09T15:20:00Z",
+      "receivedAt": "2026-09-09T15:21:00Z",
+      "source": {
+        "providerId": "simulated-fixture",
+        "endpointId": "fixture://sg-missing-intervals",
+        "licenseId": "CC0-1.0-synthetic",
+        "recordRef": "sg-missing-intervals-rec-004"
+      },
+      "quality": {
+        "sourceState": "fresh",
+        "positionAccuracy": "exact",
+        "classification": "confirmed"
+      }
+    }
+  ]
+}

@@ -49,15 +49,33 @@ try {
   await page.waitForSelector("[data-testid^=launcher-]", { timeout: 30_000 });
   console.log("launcher rendered: OK");
 
-  // Select Long Beach — the rendering-error report from manual testing.
-  await page.click("[data-testid=launcher-long-beach-approach]");
-  await page.waitForSelector("[data-testid=card-vessel-count]", { timeout: 30_000 });
-  await page.waitForTimeout(4000); // allow the globe to initialize and render
-
+  const investigated: string[] = [];
+  for (const [chokepoint, expectedVessels] of [
+    ["long-beach-approach", 1],      // at least 1 entity inside the fence
+    ["singapore-malacca-approach", 1], // regression: Singapore showed none
+  ] as const) {
+    if (investigated.length > 0) await page.click("[data-testid=back-to-launcher]");
+    await page.waitForSelector("[data-testid^=launcher-]", { timeout: 15_000 });
+    await page.click(`[data-testid=launcher-${chokepoint}]`);
+    await page.waitForSelector("[data-testid=card-vessel-count]", { timeout: 30_000 });
+    await page.waitForTimeout(4000); // globe init + render
+    const countText = await page.textContent("[data-testid=card-vessel-count] .metric-value");
+    const count = Number(countText ?? "-1");
+    console.log(`${chokepoint}: vessel count = ${countText}`);
+    investigated.push(chokepoint);
+    if (count < expectedVessels) {
+      failures += 1;
+      console.error(`FAIL: ${chokepoint} expected >= ${expectedVessels} observed freight vessels, got ${countText}`);
+      await page.screenshot({ path: `research/qa/phase3-fail-${chokepoint}.png` });
+    }
+  }
+  void investigated;
+  await page.screenshot({ path: "research/qa/phase3-investigation.png", fullPage: false });
+  console.log("screenshot saved: research/qa/phase3-investigation.png");
   const modeBadge = await page.textContent("[data-testid=mode-badge]");
   const cards = await page.locator(".metric-card").count();
   const attribution = await page.textContent("[data-testid=attribution-text]");
-  console.log(`investigation view: cards=${cards}, attribution="${(attribution ?? "").slice(0, 40)}..."`);
+  console.log(`final view: cards=${cards}, attribution="${(attribution ?? "").slice(0, 40)}..."`);
 
   const renderError = pageErrors.find((e) => /An error occurred while rendering/i.test(e)) ?? null;
   const cesiumErrors = pageErrors.filter((e) => /Cesium|RuntimeError|DeveloperError/i.test(e));
@@ -80,9 +98,6 @@ try {
     failures += 1;
     console.error("FAIL: attribution missing/empty");
   }
-
-  await page.screenshot({ path: "research/qa/phase3-investigation.png", fullPage: false });
-  console.log("screenshot saved: research/qa/phase3-investigation.png");
 
   // SIM badge visible (§3.1)
   const simVisible = await page.isVisible("[data-testid=mode-badge]");

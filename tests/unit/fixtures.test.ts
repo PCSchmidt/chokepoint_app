@@ -62,6 +62,10 @@ describe("checked-in fixture set (§12.2 scenarios)", () => {
         "normal-transit.json",
         "out-of-order.json",
         "port-entry-exit.json",
+        "sg-missing-intervals.json",
+        "sg-normal-transit.json",
+        "sg-port-entry-exit.json",
+        "sg-stationary-anchorage.json",
         "source-outage.json",
         "stationary-anchorage.json",
         "stale-cache-fallback.json",
@@ -169,6 +173,22 @@ describe("checked-in fixture set (§12.2 scenarios)", () => {
     expect(reasons).toMatch(/licenseId/);
     // Every rejected record keeps its id for diagnostics.
     for (const r of fx.rejected) expect(r.observationId).toBeTruthy();
+  });
+
+  it("singapore fixtures: observations membership-verified inside singapore-roadstead v1", async () => {
+    const { fixtures } = await loadFixtureDirectory(fixturesDir);
+    const sgIds = ["sg-normal-transit", "sg-stationary-anchorage", "sg-port-entry-exit", "sg-missing-intervals"];
+    for (const id of sgIds) {
+      const fx = fixtures.find((f) => f.fixtureId === id);
+      expect(fx, `fixture ${id} must exist`).toBeTruthy();
+      expect(fx!.observations.length).toBeGreaterThan(0);
+    }
+    // The anchorage fixture is a four-vessel waiting cohort.
+    const anchorage = fixtures.find((f) => f.fixtureId === "sg-stationary-anchorage")!;
+    const entities = new Set(anchorage.observations.map((o) => o.entityId));
+    expect(entities.size).toBe(4);
+    const speeds = anchorage.observations.map((o) => o.kinematics.speedKnots ?? 0);
+    expect(Math.max(...speeds)).toBeLessThan(0.5);
   });
 
   it("out-of-order: fixture arrives shuffled and canonical ordering fixes it", async () => {
