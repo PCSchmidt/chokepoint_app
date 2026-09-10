@@ -144,7 +144,39 @@ Primary evidence: BTS/`data.transportation.gov` catalog (VERIFIED,
 
 ---
 
-## 4. Terms matrix — §6.1 checklist (VERIFIED 2026-09-10)
+## 4. Cross-reference: the gods-eye-view inspiration repo's DATA_SOURCES.md
+
+The inspiration repository (PCSchmidt/gods-eye-view, main branch, fetched
+2026-09-10; archived at `research/sources/raw/gods-eye-view-DATA_SOURCES-2026-09-10.md`)
+documents its own live air-traffic experience and it CORROBORATES and refines
+this research:
+
+- **OpenSky caution was already recorded there**: "Its license is
+  **non-commercial**, and operational use of the REST API in a live product
+  can require a prior written agreement with OpenSky — even for
+  non-profit/government use." That operational note, made by a project that
+  RAN the integration, matches this research's direct reading of the OpenSky
+  terms and independently supports the ADR-0012 rejection for live adapter
+  use. It also matches the empirical pattern there: OpenSky was the PRIMARY
+  flight source but needed a fallback — evidence of the real-world friction.
+- **adsb.lol was its verified fallback** (`/v2/lat/{lat}/lon/{lon}/dist/{radius}`,
+  ODbL 1.0) — the same endpoint this research probed. Operational lessons
+  carried into ADR-0012: cap the query radius (~250 nm used there), treat the
+  result as regional observed context rather than worldwide completeness, and
+  expose per-source provenance in the UI.
+- **No land-layer content exists in that repo**: no CBP, border wait time,
+  FRA, or rail data source appears anywhere in its matrix. The CBP/FRA
+  findings in this document are entirely new research, not a re-derivation.
+- Its AISStream line ("Free, beta, no formal ToS; AIS is a public broadcast")
+  is the same claim the AIS research (2026-09-09) re-verified against the
+  live provider — the record line stays accurate, but as ADR-0010 records,
+  the "AIS is a public broadcast" rationale is the repo author's argument,
+  not a provider grant.
+- Method note (their telegraphed lesson, applied here): that repo serves
+  last-good responses during outages and labels partial catalogs DEGRADED —
+  the same health-state discipline Chokepoint already builds on.
+
+## 5. Terms matrix — §6.1 checklist (VERIFIED 2026-09-10)
 
 | Checklist item | adsb.lol | OpenSky Network | CBP bwt.cbp.gov | FRA/BTS rail |
 |---|---|---|---|---|
@@ -160,7 +192,7 @@ Primary evidence: BTS/`data.transportation.gov` catalog (VERIFIED,
 
 ---
 
-## 5. Decisions (detailed in ADR-0012/0013/0014)
+## 6. Decisions (detailed in ADR-0012/0013/0014/0015)
 
 1. **Air**: admit adsb.lol (ODbL risk-accepted, ADR-0012). OpenSky rejected
    for live use (ADR-0012 records the terms barrier).
@@ -173,7 +205,7 @@ Primary evidence: BTS/`data.transportation.gov` catalog (VERIFIED,
 
 ---
 
-## 6. What this checkpoint does NOT include (per the design note)
+## 7. What this checkpoint does NOT include (per the design note)
 
 No adapters, no config profiles, no UI, no agent surface, no fixtures built in
 this phase. Next phase begins with the FacilityMetric model (ADR-0015) and
