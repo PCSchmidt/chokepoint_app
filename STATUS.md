@@ -553,6 +553,23 @@ land profile, each with placeholder geometry awaiting human review.**
   adapters exist and are tested but the browser app runs fixture-mode);
   aircraft/truck corridor visualization; rail (deferred, ADR-0014).
 
+## Multimodal decisions 2–3 progress (2026-09-10)
+
+- **Decision 1 (geometry review) — PACKAGE PREPARED, awaiting the review
+  owner**: candidate geometry for both multimodal profiles added to
+  `research/geofence-candidates.md` (§7 El Paso BOTA/Ysleta frames, §8 LAX
+  cargo approach box), with OSM-verified crossing/aerodrome points [OSM] and
+  APPROX extents flagged for review. Placeholder geometry stays blocked until
+  ChrisSchmidt approves v1 (ADR-0007 gate — deliberately not self-approved).
+- **Decision 2 (live wiring) — CBP LIVE LAYER WIRED**: the manager accepts a
+  keyless CbpWaitTimesAdapter; land profiles prefer LIVE readings with honest
+  SIMULATED-fixture fallback; `health.cbp` surfaced per snapshot; maritime
+  snapshots untouched. Air stays unwired until geometry review (its metrics
+  need reviewed fences for membership). 4 wiring tests (321 total).
+- **Decision 3 (beta) — channel added**: a plain "Feedback" link (GitHub
+  Discussions) in the attribution bar — no tracking, no identifiers
+  (§13.1/§14.3). The beta decision memo records the published site.
+
 ## Deliberately deferred (per §17 roadmap)
 
 - **Phase 2 remainder** — baseline comparison, event detector + §12.3

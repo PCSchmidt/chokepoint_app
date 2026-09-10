@@ -99,6 +99,20 @@ Rationale against each permitted action:
 - A user cohort that returns for watchlist-style alerts → prioritize the
   hosted scheduled evaluation job (§11.3) before native mobile.
 
+## Beta status update (2026-09-10, post-implementation)
+
+- The static fixture-mode build is PUBLISHED:
+  https://pcschmidt.github.io/chokepoint_app/ (CI-deployed on every main push).
+- The launcher now includes the two multimodal candidate profiles (air, land)
+  with honest placeholder/UNKNOWN states.
+- Beta observation channel: a plain "Feedback" link to GitHub Discussions in
+  the attribution bar — privacy-safe by construction (no tracking, no
+  identifiers, §13.1/§14.3).
+- The multimodal admission gate + fixture-first implementation completed after
+  this memo was written (ADRs 0012–0015; see STATUS.md). The "publish the
+  static build" recommendation is DONE; Q1–Q3 observation starts with the
+  first external visitors.
+
 ## Recommended immediate next step
 
 The repository-side work for a public demo is complete. The cheapest

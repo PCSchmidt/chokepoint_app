@@ -214,6 +214,7 @@ root.innerHTML = `
   <main id="view-root"></main>
   <footer class="attribution-bar" data-testid="attribution-bar">
     <span id="attribution-text" data-testid="attribution-text"></span>
+    <a id="feedback-link" data-testid="feedback-link" href="https://github.com/PCSchmidt/chokepoint_app/discussions" target="_blank" rel="noopener noreferrer">Feedback</a>
   </footer>
 `;
 
