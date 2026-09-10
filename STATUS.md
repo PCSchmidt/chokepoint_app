@@ -101,6 +101,34 @@ completion claims. Claims here must match the repository.
   failure renders honest UNKNOWN (no fabricated answers). Voice remains
   deferred by Decision 2.
 
+## Phase 5 (in progress): health/readiness, metrics, structured logs
+
+- **Health/readiness (§16.1, §10.3)**: `src/telemetry/health.ts` — liveness
+  (`/api/health`: process up, injected uptime) and readiness (`/api/ready`:
+  profiles registered, default window resolvable, per-source honest health
+  states). A missing live key is UNAVAILABLE — reported, never hidden, and
+  never a readiness failure (fixture mode is the keyless path, §6.2).
+  Responses use the stable §10.3 envelope.
+- **Application server** (`src/server/server.ts`, `npm run serve`, §10.1
+  one-process local-first): hosts `/api/health`, `/api/ready`,
+  `/api/chokepoints`, `/api/attribution`, `/metrics`, and the built static
+  app with SPA fallback. Path traversal blocked (§14.2); non-GET rejected;
+  loopback/local only by design in this phase.
+- **Prometheus endpoint (§13.1)**: `src/telemetry/metrics.ts` — dependency-
+  free registry rendering the text exposition format with BOUNDED labels
+  (route enums, status classes, §8.4 rejection categories; never entity ids
+  or user text). HTTP request/error counters live at the server boundary;
+  evidence-bundle/claim/agent counters are incremented in the agent
+  pipeline.
+- **Structured logs (§13.3)**: `src/telemetry/logger.ts` — one-line JSON
+  with correlation id, request id, result status, duration, error class,
+  route. Redaction is structural: key/token/authorization patterns are
+  scrubbed from messages and string fields; there is no field for keys or
+  transcripts.
+- Verified end-to-end on the built app: `health ok/alive`, `ready 200 true`
+  with 3 honest source reports, profiles list, metrics scrape containing
+  request counters, SPA index served, 405 on POST. 268 tests.
+
 ## Actually built (Phase 0/1)
 
 - Repository scaffold: Vite + TypeScript (strict), module boundary folders from

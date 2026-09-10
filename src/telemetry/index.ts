@@ -1,9 +1,8 @@
 /**
- * Telemetry module boundary (CHOKEPOINT-PLAN.md §9.2).
- *
- * Prometheus metrics and diagnostics: Phase 5 (deferred).
- * Intentionally empty in Phase 0/1: implementation arrives in a later phase.
- * This file exists only to pin the module boundary.
+ * Telemetry module boundary (CHOKEPOINT-PLAN.md §9.2, §13): health/readiness
+ * (§16.1), Prometheus metrics (§13.1), structured logs (§13.3).
  */
 
-export {};
+export * from "./health";
+export * from "./metrics";
+export * from "./logger";

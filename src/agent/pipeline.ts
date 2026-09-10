@@ -10,6 +10,7 @@ import { buildEvidenceBundle, type EvidenceBundle } from "./evidenceBundle";
 import { evaluateToolResult, type EvaluatorVerdict } from "./evaluator";
 import { answerQuestion, type AgentAnswer } from "./generator";
 import type { AgentClaim, UiAction } from "./tools";
+import { MetricsRegistry } from "../telemetry/metrics";
 
 export interface AgentContext {
   /** The chokepoint currently under investigation (null = launcher). */
@@ -50,6 +51,7 @@ export async function askAgentWithContext(
   manager: DataManager,
   context: AgentContext,
   contextChokepointId: string | null,
+  metrics?: MetricsRegistry | undefined,
 ): Promise<{ bundle: EvidenceBundle; verdict: EvaluatorVerdict | null; answer: AgentAnswer; uiAction: UiAction | null }> {
   const effectiveContext = contextChokepointId
     ? { ...context, chokepointId: context.chokepointId ?? contextChokepointId }
@@ -59,6 +61,8 @@ export async function askAgentWithContext(
     window: effectiveContext.window ?? manager.defaultWindow(),
   });
   if (!bundle.tool) {
+    metrics?.inc("chokepoint_agent_requests_total", { outcome: "abstained" });
+    metrics?.inc("chokepoint_evidence_bundles_total", { result: "abstained" });
     return { bundle, verdict: null, answer: answerQuestion(bundle, {
       verdict: "rejected",
       acceptedClaims: [],
@@ -72,6 +76,8 @@ export async function askAgentWithContext(
   // response text is the tool's acceptance note, never a claim the visual
   // state already changed.
   if (bundle.tool.uiAction) {
+    metrics?.inc("chokepoint_agent_requests_total", { outcome: "ui_action" });
+    metrics?.inc("chokepoint_evidence_bundles_total", { result: "ok" });
     return {
       bundle,
       verdict: null,
@@ -99,7 +105,27 @@ export async function askAgentWithContext(
   });
   const verdict = evaluateToolResult(bundle.tool, metricValues, bundle.sourceHealth);
   const answer = answerQuestion(bundle, verdict);
+  metrics?.inc("chokepoint_evidence_bundles_total", { result: "ok" });
+  metrics?.inc("chokepoint_claims_accepted_total", {}, verdict.acceptedClaims.length);
+  for (const r of verdict.rejectedClaims) {
+    metrics?.inc("chokepoint_claims_rejected_total", { category: rejectionCategory(r.reason) });
+  }
+  metrics?.inc("chokepoint_agent_requests_total", {
+    outcome: verdict.verdict === "rejected" ? "rejected" : "answered",
+  });
   return { bundle, verdict, answer, uiAction: null };
+}
+
+/** Map an evaluator rejection reason to a bounded §13.1 label. */
+function rejectionCategory(reason: string): string {
+  if (/THREAT/.test(reason)) return "THREAT";
+  if (/Causal|CAUSE/.test(reason)) return "CAUSE";
+  if (/PREDICTION/.test(reason)) return "PREDICTION";
+  if (/IDENTITY/.test(reason)) return "IDENTITY";
+  if (/INTENT/.test(reason)) return "INTENT";
+  if (/provenance/i.test(reason)) return "PROVENANCE";
+  if (/Scope overreach/.test(reason)) return "SCOPE";
+  return "NUMERIC";
 }
 
 export type { AgentClaim };

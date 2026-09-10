@@ -17,7 +17,8 @@
     "smoke": "tsx scripts/aisstream-smoke.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "eval:agent": "tsx scripts/run-agent-evaluation.ts"
+    "eval:agent": "tsx scripts/run-agent-evaluation.ts",
+    "serve": "tsx scripts/serve.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
