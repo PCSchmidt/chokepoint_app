@@ -48,6 +48,12 @@ export interface DataManagerOptions {
    */
   cbpAdapter?: import("./cbpWaitTimesAdapter").CbpWaitTimesAdapter | undefined;
   /**
+   * Optional live adsb.lol adapter (ADR-0012, keyless). When provided, air
+   * profiles serve LIVE aircraft observations inside the reviewed
+   * lax-cargo-approach fence. Injectable for tests.
+   */
+  adsbAdapter?: import("./adsbLolAdapter").AdsbLolAdapter | undefined;
+  /**
    * Fixture manifests directly (BROWSER path: import.meta.glob over the
    * checked-in SIMULATED fixtures). When omitted, manifests load from
    * fixtureDir via node:fs (node/tests path).
@@ -97,6 +103,8 @@ export interface ChokepointSnapshot {
     live: SourceStatus | null;
     /** Live CBP border-wait health when the keyless adapter is wired (ADR-0013). */
     cbp: SourceStatus | null;
+    /** Live adsb.lol aircraft health when the keyless adapter is wired (ADR-0012). */
+    adsb: SourceStatus | null;
   };
   /**
    * Facility-level readings in the window (ADR-0015): populated for
@@ -186,6 +194,11 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
   if (cbpAdapter) {
     await cbpAdapter.enable({ now: now, trigger: "startup" });
   }
+  // adsb.lol live aircraft layer (ADR-0012): keyless, both modes.
+  const adsbAdapter = options.adsbAdapter ?? null;
+  if (adsbAdapter) {
+    await adsbAdapter.enable({ now: now, trigger: "startup" });
+  }
   const liveAdapter =
     options.mode === "live" && options.apiKey
       ? new AisStreamAdapter({
@@ -226,6 +239,17 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
               ? liveFacility
               : fixtureFacility.filter((f) => f.facilityId.startsWith("cbp:"))
             : [];
+        // Air: LIVE aircraft inside the reviewed fence (ADR-0012), only when
+        // the adsb adapter is wired AND the profile has reviewed geometry.
+        const airFences = REVIEWED_GEOFENCE_REGISTRY.filter((f) =>
+          profile.geofences.some((g) => g.id === f.id),
+        );
+        const airObservations =
+          profile.mode === "air" && adsbAdapter && airFences.length > 0
+            ? (adsbAdapter.getRecords({ timeWindow: window }) as unknown as import("./observation").TransportObservation[]).filter(
+                (o) => airFences.some((f) => geofenceMembership(f, o.position.latitude, o.position.longitude).inside),
+              )
+            : [];
         const emptyMetric = (metricId: string, metricType: string): import("../analytics/metrics").DerivedMetric => ({
           metricId,
           metricType,
@@ -245,16 +269,40 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
                 : "facility profile: entity metrics not applicable",
           },
         });
+        const airCountMetric =
+          profile.mode === "air"
+            ? ({
+                metricId: `${profile.id}.count`,
+                metricType: "vessel_count",
+                scope: profile.id,
+                value: airObservations.length > 0 ? airObservations.length : null,
+                unit: "count",
+                computedAt: window.endAt,
+                observationWindow: window,
+                formulaVersion: adsbAdapter && airFences.length > 0 ? "aircraft-count-v1-adsb" : "not-applicable-no-data",
+                inputs: ["adsb-lol"],
+                quality: {
+                  state: airObservations.length > 0 ? "fresh" : "unknown",
+                  sampleCount: airObservations.length,
+                  coverageNote:
+                    airObservations.length > 0
+                      ? "aircraft observed inside the reviewed fence (inferred freight cohorts, ADR-0012)"
+                      : adsbAdapter
+                        ? "no aircraft inside the reviewed fence in this window"
+                        : "air adapter not wired in this deployment",
+                },
+              } satisfies import("../analytics/metrics").DerivedMetric)
+            : null;
         return {
           profile,
           window,
           baselineWindow: window,
-          observations: [],
-          freightEntityIds: [],
-          unclassifiedCount: 0,
+          observations: airObservations,
+          freightEntityIds: airObservations.filter((o) => o.entityType === "aircraft").map((o) => o.entityId),
+          unclassifiedCount: airObservations.filter((o) => o.entityType === "unknown").length,
           otherCount: 0,
           metrics: {
-            vesselCount: emptyMetric(`${profile.id}.count`, "vessel_count"),
+            vesselCount: airCountMetric ?? emptyMetric(`${profile.id}.count`, "vessel_count"),
             movingFraction: emptyMetric(`${profile.id}.moving`, "moving_fraction"),
             dwellCohortSize: emptyMetric(`${profile.id}.dwellCohort`, "dwell_cohort_size"),
             dwellMedianSeconds: emptyMetric(`${profile.id}.dwellMedian`, "dwell_median_seconds"),
@@ -273,11 +321,16 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
             fixture: fixtureAdapter.getStatus(),
             live: liveAdapter ? liveAdapter.getStatus() : null,
             cbp: cbpAdapter ? cbpAdapter.getStatus() : null,
+            adsb: adsbAdapter ? adsbAdapter.getStatus() : null,
           },
           facilityMetrics: profileFacilities,
           multimodalNotice:
             profile.mode === "air"
-              ? "No aircraft observations are served in this mode yet — the air adapter is not wired into this deployment; data will appear once the live layer is enabled."
+              ? airObservations.length > 0
+                ? null
+                : adsbAdapter
+                  ? "No aircraft were inside the reviewed fence during this window — coverage follows community receiver density (regional context, ADR-0012)."
+                  : "No aircraft observations are served in this mode yet — the air adapter is not wired into this deployment."
               : null,
         };
       }
@@ -379,6 +432,7 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
           fixture: fixtureAdapter.getStatus(),
           live: liveAdapter ? liveAdapter.getStatus() : null,
           cbp: cbpAdapter ? cbpAdapter.getStatus() : null,
+          adsb: adsbAdapter ? adsbAdapter.getStatus() : null,
         },
         // Maritime snapshots carry NO facility data (ADR-0015 separation):
         // facility signals belong to facility profiles only.
@@ -390,6 +444,7 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
       fixtureAdapter.destroy();
       liveAdapter?.destroy();
       cbpAdapter?.destroy();
+      adsbAdapter?.destroy();
     },
   };
   return manager;
