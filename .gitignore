@@ -46,6 +46,9 @@ coverage/
 # Raw downloaded research sources (kept locally for verification, never committed:
 # provider terms of use / size / redistribution concerns)
 research/sources/raw/
+# EXCEPTION: the archived CBP sample used by tests is US-gov public-domain
+# data and the fixture-first suite depends on it (ADR-0013).
+!research/sources/raw/cbp-bwt-sample-2026-09-10.json
 
 # Cesium runtime assets (synced from node_modules by scripts/sync-cesium.mjs)
 public/cesium/
