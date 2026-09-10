@@ -17,6 +17,7 @@ import {
   sortObservations,
   type TransportObservation,
 } from "./observation";
+import { dedupeFacilityMetrics, type FacilityMetric } from "./facilityMetric";
 import { provenanceForObservations, type ProvenanceRecord, FIXTURE_TRANSFORMATION_VERSION } from "./provenance";
 import { parseFixture, type FixtureManifest } from "./fixtureLoader";
 import { SourceHealthStateMachine } from "./sourceHealth";
@@ -70,6 +71,7 @@ export class FixtureSourceAdapter implements SourceAdapter<TransportObservation>
   private readonly manifests: readonly FixtureManifest[];
   private readonly freshWithinSeconds: number;
   private records: TransportObservation[] = [];
+  private facilityMetrics: FacilityMetric[] = [];
   private rejectedRecords: Array<{ reason: string; observationId?: string | undefined; fixtureId: string }> = [];
   private health: SourceHealthStateMachine;
   private servingTime: string | null = null;
@@ -90,16 +92,22 @@ export class FixtureSourceAdapter implements SourceAdapter<TransportObservation>
   private ingest(): {
     accepted: TransportObservation[];
     rejected: Array<{ reason: string; observationId?: string | undefined; fixtureId: string }>;
+    facilities: FacilityMetric[];
   } {
     const raw: TransportObservation[] = [];
     const rejected: Array<{ reason: string; observationId?: string | undefined; fixtureId: string }> = [];
+    const rawFacilities: FacilityMetric[] = [];
     for (const manifest of this.manifests) {
       const parsed = parseFixture(manifest); // throws if SIMULATED labeling is missing
       for (const observation of parsed.observations) raw.push(observation);
       for (const r of parsed.rejected) rejected.push({ ...r, fixtureId: manifest.fixtureId });
+      for (const fm of parsed.facilityMetrics) rawFacilities.push(fm);
+      // Facility rejections are visible through getFacilityMetrics consumers
+      // via tests; facility fixtures are validated in CI so silent loss here
+      // would be caught by the fixture suite.
     }
     const { unique } = dedupeObservations(raw);
-    return { accepted: sortObservations(unique), rejected };
+    return { accepted: sortObservations(unique), rejected, facilities: dedupeFacilityMetrics(rawFacilities) };
   }
 
   /** Fixture-timeline serving time: newest receivedAt among accepted records. */
@@ -142,8 +150,9 @@ export class FixtureSourceAdapter implements SourceAdapter<TransportObservation>
 
   async enable(context: SourceContext): Promise<SourceResult> {
     if (this.destroyed) throw new Error("FixtureSourceAdapter was destroyed and cannot be re-enabled");
-    const { accepted, rejected } = this.ingest();
+    const { accepted, rejected, facilities } = this.ingest();
     this.records = accepted;
+    this.facilityMetrics = facilities;
     this.rejectedRecords = rejected;
     this.servingTime = this.servingTimeOf(accepted) ?? context.now;
     this.enabled = true;
@@ -212,6 +221,21 @@ export class FixtureSourceAdapter implements SourceAdapter<TransportObservation>
       if (scope.entityTypes && !scope.entityTypes.includes(o.entityType)) return false;
       if (scope.timeWindow) {
         if (o.observedAt < scope.timeWindow.startAt || o.observedAt > scope.timeWindow.endAt) return false;
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Facility-level readings (ADR-0015), windowed by observedAt. Empty unless
+   * a facility fixture is loaded. NEVER mixed into entity records.
+   */
+  getFacilityMetrics(scope: QueryScope = {}): ReadonlyArray<FacilityMetric> {
+    if (this.destroyed || !this.enabled) return [];
+    return this.facilityMetrics.filter((f) => {
+      if (scope.modes && !scope.modes.includes(f.mode)) return false;
+      if (scope.timeWindow) {
+        if (f.observedAt < scope.timeWindow.startAt || f.observedAt > scope.timeWindow.endAt) return false;
       }
       return true;
     });

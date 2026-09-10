@@ -87,6 +87,17 @@ export interface ChokepointSnapshot {
   attribution: AttributionRecord;
   sourceMode: SourceMode;
   health: { fixture: SourceStatus; live: SourceStatus | null };
+  /**
+   * Facility-level readings in the window (ADR-0015): populated for
+   * facility-based profiles (border crossings); empty for entity profiles.
+   * NEVER mixed into `observations` or entity metrics.
+   */
+  facilityMetrics: import("./facilityMetric").FacilityMetric[];
+  /**
+   * Honest multimodal state: geometry placeholder means no reviewed fence can
+   * serve membership; the UI must show the limitation, not fake a view.
+   */
+  multimodalNotice: string | null;
 }
 
 export interface DataManager {
@@ -184,6 +195,61 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
     getSnapshot: (chokepointId, window) => {
       const profile = getChokepoint(chokepointId);
       if (!profile) throw new Error(`unknown chokepoint: ${chokepointId}`);
+      // --- Multimodal profiles (ADR-0012/0013/0015): no reviewed fences yet.
+      // Land serves facility metrics keyed by facilityId; air serves an honest
+      // empty state until geometry is reviewed. Neither runs entity metrics.
+      if (profile.mode === "land" || profile.mode === "air") {
+        const allFacility = fixtureAdapter.getFacilityMetrics({ timeWindow: window });
+        const profileFacilities =
+          profile.mode === "land"
+            ? // Land profiles serve CBP facility readings keyed by facilityId
+              // (ADR-0013/0015) — no geofence membership involved.
+              allFacility.filter((f) => f.facilityId.startsWith("cbp:"))
+            : [];
+        const emptyMetric = (metricId: string, metricType: string): import("../analytics/metrics").DerivedMetric => ({
+          metricId,
+          metricType,
+          scope: profile.id,
+          value: null,
+          unit: metricType === "moving_fraction" ? "fraction" : "count",
+          computedAt: window.endAt,
+          observationWindow: window,
+          formulaVersion: "not-applicable-placeholder-geometry",
+          inputs: [],
+          quality: { state: "unknown", sampleCount: 0, coverageNote: "geometry placeholder — no reviewed fence (ADR-0007 gate)" },
+        });
+        return {
+          profile,
+          window,
+          baselineWindow: window,
+          observations: [],
+          freightEntityIds: [],
+          unclassifiedCount: 0,
+          otherCount: 0,
+          metrics: {
+            vesselCount: emptyMetric(`${profile.id}.count`, "vessel_count"),
+            movingFraction: emptyMetric(`${profile.id}.moving`, "moving_fraction"),
+            dwellCohortSize: emptyMetric(`${profile.id}.dwellCohort`, "dwell_cohort_size"),
+            dwellMedianSeconds: emptyMetric(`${profile.id}.dwellMedian`, "dwell_median_seconds"),
+            entryCount: emptyMetric(`${profile.id}.entry`, "entry_count"),
+            exitCount: emptyMetric(`${profile.id}.exit`, "exit_count"),
+          },
+          comparisons: {
+            vesselCount: { relativeChange: null, absoluteChange: null, direction: "unknown" as const, qualityState: "unknown" as const, note: "geometry placeholder — metrics blocked until reviewed" },
+            movingFraction: { relativeChange: null, absoluteChange: null, direction: "unknown" as const, qualityState: "unknown" as const, note: "geometry placeholder — metrics blocked until reviewed" },
+          },
+          events: [],
+          provenance: fixtureAdapter.getProvenancePerProvider(),
+          attribution: fixtureAdapter.getAttribution(),
+          sourceMode: options.mode,
+          health: { fixture: fixtureAdapter.getStatus(), live: liveAdapter ? liveAdapter.getStatus() : null },
+          facilityMetrics: profileFacilities,
+          multimodalNotice:
+            profile.mode === "air"
+              ? "Geometry placeholder — the observation area is not reviewed yet (ADR-0007); no aircraft metrics are computed. Facility data will appear once the fence is approved."
+              : null,
+        };
+      }
       const fences = REVIEWED_GEOFENCE_REGISTRY.filter((f) =>
         profile.geofences.some((g) => g.id === f.id)
       );
@@ -279,6 +345,10 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
         attribution: fixtureAdapter.getAttribution(),
         sourceMode: options.mode,
         health: { fixture: fixtureAdapter.getStatus(), live: liveAdapter ? liveAdapter.getStatus() : null },
+        // Maritime snapshots carry NO facility data (ADR-0015 separation):
+        // facility signals belong to facility profiles only.
+        facilityMetrics: [],
+        multimodalNotice: null,
       };
     },
     destroy: () => {
