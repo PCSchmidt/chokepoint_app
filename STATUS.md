@@ -446,6 +446,11 @@ completion claims. Claims here must match the repository.
   built-in GITHUB_TOKEN (Pages permissions only, id-token write). Pages
   enabled with `build_type=workflow`; HTTPS enforced. Site:
   https://pcschmidt.github.io/chokepoint_app/
+- **LIVE VERIFICATION** (https://pcschmidt.github.io/chokepoint_app/): HTTP
+  200, launcher renders, Long Beach 11 / Singapore 7 vessel counts match the
+  local app, Suez renders coverage-UNKNOWN, 40/40 vessel pixels on-canvas,
+  SIM badge + attribution visible, service worker registered, zero failed
+  requests, zero page errors. Screenshots: research/qa/pages-live-*.png.
 - The static demo is deliberately the SPA + bundled fixtures only: /api/*,
   /metrics, Prometheus, and Grafana remain the LOCAL ops story
   (`docker compose up`) — the browser app has no calls to them (§10.1/§16.2
