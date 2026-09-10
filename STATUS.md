@@ -507,6 +507,52 @@ completion claims. Claims here must match the repository.
   surface, no rail fixtures** — the checkpoint before implementation, per the
   design note.
 
+## Multimodal implementation (2026-09-10): fixture-first core complete, one location per mode
+
+Following the admission-gate checkpoint (ADRs 0012–0015), the multimodal
+extension is implemented fixture-first. **What exists: one air profile and one
+land profile, each with placeholder geometry awaiting human review.**
+
+- **FacilityMetric model** (`src/data/facilityMetric.ts`, ADR-0015): an
+  OBSERVED facility reading record (facilityId, laneGroup/metric/value
+  measurements, verbatim provider update label, port status) with the same
+  §3.1–3.3 contracts as TransportObservation — closed vocabularies,
+  reject-never-clamp, deterministic dedupe/order. 13 tests. Facility data and
+  entity data NEVER mix (maritime snapshots carry no facility metrics and
+  vice versa — tested).
+- **CBP Border Wait Times fixture** (`tests/fixtures/cbp-border-wait-el-
+  paso.json`): SIMULATED fixture derived from the real CBP sample archived
+  2026-09-10 (El Paso BOTA + Ysleta, commercial/passenger/pedestrian lanes).
+- **CBP live adapter** (`src/data/cbpWaitTimesAdapter.ts`, ADR-0013): polls
+  the keyless bwt.cbp.gov endpoint with an INJECTED fetch (no network in CI),
+  transforms real crossings into FacilityMetrics, reports partial/failure
+  honestly, keeps the latest reading per facility. 9 tests over the archived
+  real sample.
+- **adsb.lol live adapter** (`src/data/adsbLolAdapter.ts`, ADR-0012): polls
+  the point API into mode-"air" TransportObservations with position/
+  kinematics; freight-operator cohorts are INFERRED from documented callsign
+  heuristics over provider-published metadata — never "confirmed"; bounded
+  buffer + TTL per the ODbL posture; seen_pos gives second-precision
+  observedAt. 7 tests.
+- **Config profiles** (`src/config/chokepoints.ts`): `lax-cargo-air` (air) and
+  `el-paso-border-crossings` (land) with PLACEHOLDER geometry — they are
+  excluded from the reviewed-fence registry and block metric computation by
+  design (the ADR-0007 human-approval gate is intact). Launcher coverage
+  language is mode-aware (AIS / ADS-B / border-wait).
+- **Manager snapshots**: land profiles serve facility readings keyed by
+  facilityId (no membership); air serves an honest empty state with an
+  ADR-0007 notice; entity metrics under placeholder geometry are UNKNOWN,
+  never zero.
+- **Agent surface**: wait-time and cargo-flight questions parse (with a real
+  "how long"→"Long Beach" word-collision regression found and fixed); land
+  answers carry OBSERVED facility values with provenance; air answers state
+  the geometry gate. The evaluator checks facility numbers against the
+  metric map — a fabricated wait time is rejected (groundedness 25/25).
+- **NOT built (honest scope)**: reviewed geometry for either profile (the
+  deliberate human gate); live wiring into the app manager (the live
+  adapters exist and are tested but the browser app runs fixture-mode);
+  aircraft/truck corridor visualization; rail (deferred, ADR-0014).
+
 ## Deliberately deferred (per §17 roadmap)
 
 - **Phase 2 remainder** — baseline comparison, event detector + §12.3
