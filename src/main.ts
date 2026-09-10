@@ -11,14 +11,14 @@
 // Cesium reads window.CESIUM_BASE_URL at RUNTIME (the Vite `define` only
 // rewrites bare identifiers — it does not set the window property). Without
 // this, the viewer cannot load its workers/imagery and render fails.
-window.CESIUM_BASE_URL = "/cesium/";
+window.CESIUM_BASE_URL = `${import.meta.env.BASE_URL}cesium/`;
 
 // PWA: register the offline shell service worker (production builds only;
 // dev needs uncached source). Registration is failure-tolerant: the app is
 // fully usable without it.
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js").catch(() => {
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       // Offline shell unavailable — the app still works online.
     });
   });

@@ -432,6 +432,26 @@ completion claims. Claims here must match the repository.
 - Rendering of health states (Phase 1 criterion "render correctly") waits for
   the Phase 3 UI; the machine and statuses are implemented and tested.
 
+## GitHub Pages deployment (2026-09-10): relative-base static build
+
+- The app now builds with Vite `base: "./"` so it boots at ANY hosting path
+  (domain root or the Pages project subpath `/chokepoint_app/`). Hand-written
+  runtime paths (`CESIUM_BASE_URL` in vite.config/main.ts, SW registration)
+  derive from `import.meta.env.BASE_URL`; `index.html` public-asset links stay
+  absolute in source and are rebased by Vite (relative in the emitted HTML).
+- Verified BOTH ways before deploy: local preview at `/` (29/29 pixel QA)
+  and a Pages-style subpath simulation at `/chokepoint_app/` (40/40 points,
+  manifest/icon 200, zero page errors, zero failed requests).
+- `.github/workflows/deploy.yml`: build -> upload `dist/` -> deploy via the
+  built-in GITHUB_TOKEN (Pages permissions only, id-token write). Pages
+  enabled with `build_type=workflow`; HTTPS enforced. Site:
+  https://pcschmidt.github.io/chokepoint_app/
+- The static demo is deliberately the SPA + bundled fixtures only: /api/*,
+  /metrics, Prometheus, and Grafana remain the LOCAL ops story
+  (`docker compose up`) — the browser app has no calls to them (§10.1/§16.2
+  boundary). A custom domain later is a DNS change + Pages setting; the
+  relative build needs no changes for it.
+
 ## Phase 6 decision (2026-09-10): hold, beta on the static fixture build
 
 - `docs/phase6-beta-decision.md` evaluates the six §17 Phase 6 questions
