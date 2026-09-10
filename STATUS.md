@@ -43,6 +43,21 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Phase 3 QA milestone: both chokepoints verified rendering in-browser
+
+- Playwright e2e (`npm run qa:browser`) asserts the full flow: launcher ->
+  investigation for BOTH Long Beach (11 vessels) and Singapore (7 vessels),
+  with zero console/page errors, SIM badge visible, attribution rendered.
+- Root cause of the earlier "Singapore shows none": the fixture set simulated
+  only Long Beach. Added four Singapore fixtures (transit, a 4-vessel
+  anchorage waiting cohort, entry/exit, 3-hour gap), all membership-verified
+  inside the reviewed `singapore-roadstead@2026-09-09-v1` fence. Suez remains
+  intentionally without fixtures (its live coverage is UNKNOWN per §6.1; the
+  UI shows the honest UNKNOWN/empty state).
+- 213 tests. Known cosmetic limit: the offline Natural Earth II base map is
+  blurry at chokepoint zoom (whole-earth texture); keyless Esri satellite
+  stack is available in the map registry.
+
 ## Phase 3: Cesium product surface (in progress)
 
 - **CesiumJS 1.145 integrated keyless** (ADR-0003, §4.1, §6.2): no ion token,
