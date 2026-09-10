@@ -98,7 +98,7 @@ for (const [i, c] of rejectionCases.entries()) {
   record("border wait answered from OBSERVED facility metrics", "what's the wait at El Paso", /observed; reported by CBP/, land.answer.text);
   record("facility answer carries the real sample value", "what's the wait at El Paso", /3 minutes/, land.answer.text);
   const air = await askAgent("how many cargo flights at LAX", manager, { chokepointId: "lax-cargo-air", window: LAND_WINDOW });
-  record("air profile states the geometry gate honestly", "how many cargo flights at LAX", /placeholder/, air.answer.text);
+  record("air profile states the honest no-data reason", "how many cargo flights at LAX", /not wired|no aircraft/i, air.answer.text);
   record("air profile never fabricates a count", "how many cargo flights at LAX", false, /\b\d+ (cargo )?(flights|aircraft)\b/.test(air.answer.text));
   const longQuestion = await askAgent("how long is the wait at El Paso", manager, { chokepointId: "el-paso-border-crossings", window: LAND_WINDOW });
   record("wait question does not misroute to Long Beach", "how long is the wait at El Paso", /El Paso - (?:Bridge of the Americas|Ysleta)/, longQuestion.answer.text);

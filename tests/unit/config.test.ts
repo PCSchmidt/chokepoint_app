@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertUsableGeofence,
   CHOKEPOINT_REGISTRY,
+  DESIGNATED_GEOMETRY_REVIEW_OWNER,
   getChokepoint,
   isPlaceholder,
 } from "../../src/config/chokepoints";
@@ -23,17 +24,20 @@ describe("chokepoint registry", () => {
     ]);
   });
 
-  it("multimodal profiles carry placeholder geometry that blocks metrics (ADR-0007 gate intact)", () => {
+  it("multimodal geometry is reviewed v1 (approved 2026-09-10 by the owner; ADR-0007 trail intact)", () => {
     for (const id of ["lax-cargo-air", "el-paso-border-crossings"]) {
       const p = getChokepoint(id)!;
       expect(p.mode).toBe(id === "lax-cargo-air" ? "air" : "land");
       for (const g of p.geofences) {
-        expect(g.geometryStatus).toBe("placeholder");
-        expect(g.reviewOwner).toBeNull();
-        expect(isPlaceholder(g)).toBe(true);
-        expect(() => assertUsableGeofence(g)).toThrow(/placeholder/);
+        expect(g.geometryStatus, g.id).toBe("reviewed");
+        expect(g.reviewOwner, g.id).toBe(DESIGNATED_GEOMETRY_REVIEW_OWNER);
+        expect(g.effectiveDate, g.id).toBe("2026-09-10");
+        expect(isPlaceholder(g), g.id).toBe(false);
+        expect(() => assertUsableGeofence(g)).not.toThrow();
       }
     }
+    // Land fences are framing-only even though reviewed: facility metrics key
+    // on facilityId (ADR-0013/0015) — enforced by the manager, tested there.
   });
 
   it("exposes lookup by stable id", () => {

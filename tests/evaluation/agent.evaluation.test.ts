@@ -248,13 +248,13 @@ describe("multimodal agent surface (ADR-0012/0013/0015)", async () => {
     expect(answer.text).toMatch(/observed; reported by CBP/);
   });
 
-  it("air profile: honest ADR-0007 refusal, never a fabricated aircraft count", async () => {
+  it("air profile: honest no-data refusal (geometry approved 2026-09-10; adapter unwired), never a fabricated count", async () => {
     const { answer } = await askAgent("how many cargo flights at LAX", manager, {
       chokepointId: "lax-cargo-air",
       window: LAND_WINDOW,
     });
-    expect(answer.text).toMatch(/placeholder/i);
-    expect(answer.text).toMatch(/ADR-0007/);
+    expect(answer.text).toMatch(/not wired|no aircraft/i);
+    expect(answer.text).not.toMatch(/\b\d+ (cargo )?(flights|aircraft)\b/);
   });
 
   it("facility numbers are evaluator-checked: a fabricated wait is rejected", () => {

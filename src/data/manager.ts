@@ -234,9 +234,16 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
           unit: metricType === "moving_fraction" ? "fraction" : "count",
           computedAt: window.endAt,
           observationWindow: window,
-          formulaVersion: "not-applicable-placeholder-geometry",
+          formulaVersion: "not-applicable-no-data",
           inputs: [],
-          quality: { state: "unknown", sampleCount: 0, coverageNote: "geometry placeholder — no reviewed fence (ADR-0007 gate)" },
+          quality: {
+            state: "unknown",
+            sampleCount: 0,
+            coverageNote:
+              profile.mode === "air"
+                ? "no aircraft data served in this deployment (air adapter not wired)"
+                : "facility profile: entity metrics not applicable",
+          },
         });
         return {
           profile,
@@ -255,8 +262,8 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
             exitCount: emptyMetric(`${profile.id}.exit`, "exit_count"),
           },
           comparisons: {
-            vesselCount: { relativeChange: null, absoluteChange: null, direction: "unknown" as const, qualityState: "unknown" as const, note: "geometry placeholder — metrics blocked until reviewed" },
-            movingFraction: { relativeChange: null, absoluteChange: null, direction: "unknown" as const, qualityState: "unknown" as const, note: "geometry placeholder — metrics blocked until reviewed" },
+            vesselCount: { relativeChange: null, absoluteChange: null, direction: "unknown" as const, qualityState: "unknown" as const, note: profile.mode === "air" ? "no aircraft data in this deployment" : "facility profile: no entity metrics" },
+            movingFraction: { relativeChange: null, absoluteChange: null, direction: "unknown" as const, qualityState: "unknown" as const, note: profile.mode === "air" ? "no aircraft data in this deployment" : "facility profile: no entity metrics" },
           },
           events: [],
           provenance: fixtureAdapter.getProvenancePerProvider(),
@@ -270,7 +277,7 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
           facilityMetrics: profileFacilities,
           multimodalNotice:
             profile.mode === "air"
-              ? "Geometry placeholder — the observation area is not reviewed yet (ADR-0007); no aircraft metrics are computed. Facility data will appear once the fence is approved."
+              ? "No aircraft observations are served in this mode yet — the air adapter is not wired into this deployment; data will appear once the live layer is enabled."
               : null,
         };
       }

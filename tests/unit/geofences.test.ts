@@ -40,15 +40,9 @@ const TEST_FENCE: ReviewedGeofence = {
 };
 
 describe("ADR-0007 guard", () => {
-  it("production fences are reviewed v1 and membership works (maritime; multimodal placeholders excluded by design)", () => {
+  it("production fences are reviewed v1 and membership works (all profiles, multimodal approved 2026-09-10)", () => {
     for (const c of CHOKEPOINT_REGISTRY) {
       for (const g of c.geofences) {
-        if (c.mode !== "sea") {
-          // Multimodal candidates (ADR-0012/0013) hold placeholder geometry:
-          // they must stay unregistered and out of membership entirely.
-          expect(g.geometryStatus).toBe("placeholder");
-          continue;
-        }
         expect(g.geometryStatus).toBe("reviewed");
         const ring = g.geometry.kind === "polygon" ? g.geometry.ring : undefined;
         if (!ring) throw new Error("reviewed fences must be polygons");
@@ -66,7 +60,7 @@ describe("ADR-0007 guard", () => {
     expect(() => geofenceMembership(placeholder, 33.6, -118.2)).toThrow(/blocked/);
   });
 
-  it("the registry contains exactly the six reviewed v1 fences", () => {
+  it("the registry contains the six maritime v1 fences plus the three multimodal v1 fences", () => {
     expect(REVIEWED_GEOFENCE_REGISTRY.map((f) => f.id).sort()).toEqual(
       [
         "outer-anchorage",
@@ -75,11 +69,16 @@ describe("ADR-0007 guard", () => {
         "singapore-roadstead",
         "gulf-of-suez-approach",
         "port-said-approach",
+        "lax-cargo-approach",
+        "el-paso-crossings-area",
+        "ysleta-crossings-area",
       ].sort()
     );
     for (const f of REVIEWED_GEOFENCE_REGISTRY) {
       expect(f.reviewOwner).toBe("ChrisSchmidt (GitHub: PCSchmidt)");
-      expect(f.geometryVersion).toBe("2026-09-09-v1");
+      // Maritime geometry: ADR-0011 (2026-09-09-v1). Multimodal: approved
+      // 2026-09-10 (el-paso/lax v1).
+      expect(["2026-09-09-v1", "el-paso-v1-2026-09-10", "lax-v1-2026-09-10"]).toContain(f.geometryVersion);
     }
   });
 

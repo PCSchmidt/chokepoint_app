@@ -553,6 +553,23 @@ land profile, each with placeholder geometry awaiting human review.**
   adapters exist and are tested but the browser app runs fixture-mode);
   aircraft/truck corridor visualization; rail (deferred, ADR-0014).
 
+## Geometry v1 approved for the multimodal profiles (2026-09-10)
+
+- **Review owner ChrisSchmidt approved the candidate frames** ("Frames look
+  okay to me"), recorded in `research/geofence-candidates.md` §7–8 and
+  committed as reviewed geometry in `src/config/chokepoints.ts`:
+  - `lax-cargo-approach` (`lax-v1-2026-09-10`): LAX cargo-aircraft observation
+    region, anchored on the OSM-verified KLAX aerodrome point, [APPROX]
+    extents.
+  - `el-paso-crossings-area` + `ysleta-crossings-area` (`el-paso-v1-2026-09-10`):
+    display framing anchored on OSM-verified crossing points. FRAMING ONLY —
+    facility metrics key on facilityId (ADR-0013/0015), never membership.
+- `REVIEWED_GEOFENCE_REGISTRY` now holds 9 fences (6 maritime + 3 multimodal);
+  the ADR-0007 gate trail is preserved (candidate notes retained in research).
+- Honest-state wording updated: the air profile's notice now says the air
+  adapter is not wired (the real reason) rather than "geometry placeholder"
+  (no longer true). Groundedness 25/25 after the rewording; 321 tests.
+
 ## Multimodal decisions 2–3 progress (2026-09-10)
 
 - **Decision 1 (geometry review) — PACKAGE PREPARED, awaiting the review

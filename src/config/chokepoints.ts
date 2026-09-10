@@ -364,22 +364,35 @@ export const LAX_CARGO_AIR: ChokepointProfile = {
   revisedAt: "2026-09-10",
   geofences: [
     {
+      // Approved v1 2026-09-10 by ChrisSchmidt (GitHub: PCSchmidt) — see
+      // research/geofence-candidates.md §8. Bbox extents are [APPROX] by
+      // design (regional adsb.lol query region, ADR-0012); a v2 could tighten
+      // along published FAA approach procedures.
       id: "lax-cargo-approach",
       purpose: "approach-flow",
-      geometryVersion: "placeholder-2026-09-10",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
-      effectiveDate: null,
-      inclusionRule: null,
+      geometryVersion: "lax-v1-2026-09-10",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-10",
+      inclusionRule:
+        "Aircraft (mode air) with at least one adsb.lol position inside this box during the window; freight-operator cohorts are inferred from provider-published metadata per ADR-0012.",
       coordinateReference: "EPSG:4326",
       rationale:
-        "CANDIDATE: cargo-aircraft observation area around LAX (KLAX). Boundary proposal must anchor on published FAA approach/departure procedures or sector definitions before review; a bbox is a placeholder that blocks metrics by design. Data source: adsb.lol (ADR-0012), operator cohorts inferred from provider-published metadata only.",
-      geometry: { kind: "placeholder-bbox", minLat: 33.65, minLon: -118.65, maxLat: 34.05, maxLon: -118.15 },
+        "Cargo-aircraft observation area around LAX (KLAX). Anchored on the OSM-verified KLAX aerodrome reference point [OSM 33.9422, -118.4214]; extents [APPROX] cover the Pacific-side approach/departure corridors where westbound flow holds. Data source: adsb.lol (ADR-0012), operator cohorts inferred from provider-published metadata only.",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [33.95, -118.65],
+          [33.95, -118.25],
+          [33.7, -118.25],
+          [33.7, -118.65],
+        ],
+      },
     },
   ],
   supportedMetrics: ["vessel_count", "moving_fraction"],
   limitations: [
-    "GEOMETRY PLACEHOLDER: the bbox is not reviewed; no membership/metric computation is permitted (ADR-0007 gate)",
+    "Geofence v1 is a coarse regional query/display region, not an official FAA sector; a v2 could tighten along published FAA approach procedures (ADR-0012)",
     "Aircraft broadcast no cargo flag: freight-operator cohorts are inferred from provider-published metadata and callsign heuristics (classification: inferred, ADR-0012)",
     "adsb.lol coverage follows community receiver density; regional observed context, never worldwide completeness",
     "aircraft counts use air-traffic vocabulary, not vessel vocabulary — counts are 'aircraft observed', never 'vessels'",
@@ -401,22 +414,60 @@ export const EL_PASO_BORDER_CROSSINGS: ChokepointProfile = {
   revisedAt: "2026-09-10",
   geofences: [
     {
+      // Approved v1 2026-09-10 by ChrisSchmidt (GitHub: PCSchmidt). The
+      // BOTA frame is anchored on the OSM-verified crossing point
+      // [OSM 31.7652, -106.4516]; extents [APPROX]. FRAMING ONLY: facility
+      // metrics key on facilityId (ADR-0013/0015), never on membership.
       id: "el-paso-crossings-area",
       purpose: "port-basin",
-      geometryVersion: "2026-09-10-v0",
-      geometryStatus: "placeholder",
-      reviewOwner: null,
-      effectiveDate: null,
-      inclusionRule: null,
+      geometryVersion: "el-paso-v1-2026-09-10",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-10",
+      inclusionRule:
+        "Display framing for the El Paso crossing cluster; facility metrics are keyed by facilityId (cbp:240201:bridge, cbp:240203:ysleta) and are NOT geofence-membership computations (ADR-0013/0015).",
       coordinateReference: "EPSG:4326",
       rationale:
-        "CANDIDATE: frames the El Paso crossing cluster (BOTA 240201, Ysleta 240203) for map display only. Facility metrics are keyed by facilityId, NOT by geofence membership — the fence is presentation context, never a measurement region, until a review owner approves v1 geometry with provenance.",
-      geometry: { kind: "placeholder-bbox", minLat: 31.6, minLon: -106.65, maxLat: 31.85, maxLon: -106.35 },
+        "Frames the El Paso crossing cluster (BOTA 240201, Ysleta 240203) for map display. Anchored on OSM-verified crossing points; APPROX extents cover the bridge approach roads. Not an official port boundary (§4.3).",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [31.775, -106.47],
+          [31.775, -106.43],
+          [31.755, -106.43],
+          [31.755, -106.47],
+        ],
+      },
+    },
+    {
+      // Approved v1 2026-09-10 by ChrisSchmidt (GitHub: PCSchmidt). Anchored
+      // on the OSM-verified Ysleta Port of Entry [OSM 31.6725, -106.3360];
+      // extents [APPROX]. Same framing-only rule as the BOTA frame.
+      id: "ysleta-crossings-area",
+      purpose: "port-basin",
+      geometryVersion: "el-paso-v1-2026-09-10",
+      geometryStatus: "reviewed",
+      reviewOwner: DESIGNATED_GEOMETRY_REVIEW_OWNER,
+      effectiveDate: "2026-09-10",
+      inclusionRule:
+        "Display framing for the Ysleta crossing; facility metrics are keyed by facilityId (cbp:240203:ysleta) and are NOT geofence-membership computations (ADR-0013/0015).",
+      coordinateReference: "EPSG:4326",
+      rationale:
+        "Frames the Ysleta crossing (240203) for map display. Anchored on the OSM-verified Ysleta Port of Entry point [OSM 31.6725, -106.3360]; APPROX extents cover the crossing approach roads. Not an official port boundary (§4.3).",
+      geometry: {
+        kind: "polygon",
+        ring: [
+          [31.682, -106.345],
+          [31.682, -106.325],
+          [31.663, -106.325],
+          [31.663, -106.345],
+        ],
+      },
     },
   ],
   supportedMetrics: ["vessel_count"],
   limitations: [
-    "GEOMETRY PLACEHOLDER: framing-only; facility metrics key on facilityId, not membership (ADR-0013/0015)",
+    "Geofence v1 is display framing only; facility metrics key on facilityId, not membership (ADR-0013/0015)",
     "US-side data only: wait times measure inbound-to-US lanes as published by CBP; no Mexican or Canadian authority data",
     "Update cadence is per-port and periodic; hours-stale readings at quiet crossings are normal (lane update_time shown verbatim)",
     "wait_minutes is an OBSERVED facility value reported by CBP; Chokepoint derives nothing from it in v1 (ADR-0013)",

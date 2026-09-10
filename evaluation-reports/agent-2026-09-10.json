@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-10T14:14:30.632Z",
+  "generatedAt": "2026-09-10T14:37:35.052Z",
   "suite": "agent-groundedness-v1",
   "evaluatorVersion": "claim-evaluator-v1",
   "total": 25,
@@ -154,10 +154,10 @@
       "pass": true
     },
     {
-      "scenario": "air profile states the geometry gate honestly",
+      "scenario": "air profile states the honest no-data reason",
       "question": "how many cargo flights at LAX",
-      "expected": "/placeholder/",
-      "actual": "Geometry placeholder — the observation area is not reviewed yet (ADR-0007); no aircraft metrics are computed. Facility data will appear once the fence is approved.",
+      "expected": "/not wired|no aircraft/i",
+      "actual": "No aircraft observations are served in this mode yet — the air adapter is not wired into this deployment; data will appear once the live layer is enabled.",
       "pass": true
     },
     {

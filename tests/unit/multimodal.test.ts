@@ -25,10 +25,10 @@ describe("land profile: CBP facility metrics (ADR-0013/0015)", async () => {
     expect(wait?.value).toBe(3); // real-sample value, SIMULATED provenance
   });
 
-  it("entity metrics are UNKNOWN with the placeholder-geometry note, never zero", () => {
+  it("entity metrics are UNKNOWN with the facility-profile note, never zero", () => {
     const snap = manager.getSnapshot("el-paso-border-crossings", WINDOW);
     expect(snap.metrics.vesselCount.value).toBeNull();
-    expect(snap.metrics.vesselCount.quality.coverageNote).toMatch(/placeholder/);
+    expect(snap.metrics.vesselCount.quality.coverageNote).toMatch(/facility profile/);
     expect(snap.comparisons.vesselCount.direction).toBe("unknown");
     expect(snap.observations).toHaveLength(0); // facility profile: no entity data
   });
@@ -54,9 +54,9 @@ describe("air profile: honest empty state until geometry review (ADR-0012)", asy
     expect(snap.metrics.vesselCount.quality.state).toBe("unknown");
   });
 
-  it("multimodalNotice states the geometry gate honestly", () => {
+  it("multimodalNotice states the honest no-data reason (geometry approved, adapter unwired)", () => {
     const snap = manager.getSnapshot("lax-cargo-air", WINDOW);
-    expect(snap.multimodalNotice).toMatch(/placeholder/i);
-    expect(snap.multimodalNotice).toMatch(/ADR-0007/);
+    expect(snap.multimodalNotice).toMatch(/not wired|no aircraft/i);
+    expect(snap.metrics.vesselCount.value).toBeNull();
   });
 });
