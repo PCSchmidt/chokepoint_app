@@ -7,8 +7,12 @@ evidence in the repository and recommends an action.
 
 ## Standing of the product at evaluation time
 
-- Commits: 43, first commit 2026-09-09 (a two-day build). 276 deterministic
-  tests, CI green on main.
+(Originally written 2026-09-10 with 276 tests; the repository has since grown
+— 326 tests, multimodal layers implemented, geometry approved — the memo's
+decision and triggers are unchanged.)
+
+- Commits: 43 at evaluation time, first commit 2026-09-09 (a two-day build).
+  CI green on main throughout.
 - Phases 0–5 exit criteria met: fixture-mode app with reviewed geofences,
   verified agent (19/19 groundedness scenarios), PWA offline shell, Docker
   stack with Prometheus (target `up = 1`) and Grafana, security review 10
@@ -103,8 +107,8 @@ Rationale against each permitted action:
 
 - The static fixture-mode build is PUBLISHED:
   https://pcschmidt.github.io/chokepoint_app/ (CI-deployed on every main push).
-- The launcher now includes the two multimodal candidate profiles (air, land)
-  with honest placeholder/UNKNOWN states.
+- The launcher includes the two multimodal profiles (air, land) with honest
+  states; their geometry is now reviewed v1 (approved 2026-09-10).
 - Beta observation channel: a plain "Feedback" link to GitHub Discussions in
   the attribution bar — privacy-safe by construction (no tracking, no
   identifiers, §13.1/§14.3).

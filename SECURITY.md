@@ -13,8 +13,12 @@ Source of truth: `CHOKEPOINT-PLAN.md` §14.
 - Hosted deployments require provider-side spend limits in addition to
   application throttles.
 
-Phase 0/1 status: the application reads no secrets at all. Fixture mode
-requires zero credentials (§6.2, §16.1).
+Current status (2026-09-10): the application reads no secrets at all. Fixture
+mode and the keyless live layers (CBP, adsb.lol) require zero credentials
+(§6.2, §16.1); AISStream's key stays server-side and appears only in the
+subscription payload. See `docs/security-review-2026-09-10.md` (10 PASS
+checks; accepted residuals: local-only exposure, root container — reviewed
+requirements for any public API deployment).
 
 ## 2. Proxy security (§14.2)
 

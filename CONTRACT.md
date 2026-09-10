@@ -70,6 +70,44 @@ Invariants enforced at ingestion (Phase 1 tests, §12.1):
 - A vessel without reliable classification is `entityType: "unknown"` and is
   excluded from type-specific totals (§3.3).
 
+## 2a. Facility-level metric model (ADR-0015)
+
+Facility signals (border wait times now; rail crossings if ever) are a
+SEPARATE canonical record — never merged into `TransportObservation` totals,
+cohorts, or geofence counts:
+
+```ts
+interface FacilityMetric {
+  metricId: string;
+  facilityId: string;          // provider-scoped, e.g. "cbp:240201:bridge"
+  facilityType: "border-crossing" | "rail-crossing" | "airport-cargo" | "port-terminal";
+  displayName: string;
+  mode: "land" | "rail" | "air";
+  location: { latitude: number; longitude: number } | null;
+  observedAt: string;          // the provider's own reading timestamp
+  receivedAt: string;
+  measurements: {
+    laneGroup: "commercial_vehicle" | "passenger_vehicle" | "pedestrian" | "fast" | "nexus_sentri" | "ready";
+    metric: "wait_minutes" | "lanes_open" | "operational_status";
+    value: number | null;      // null = UNKNOWN, never zero (§3.3)
+    unit: "minutes" | "lanes" | "status";
+    statusLabel?: string;      // verbatim provider wording ("no delay", "Update Pending")
+  }[];
+  providerUpdateLabel: string | null;  // verbatim ("At 8:00 am MDT")
+  portStatus: string | null;
+  source: { providerId; endpointId; recordRef?; licenseId };
+  quality: { sourceState: "fresh" | "stale" | "degraded" | "unavailable" };
+}
+```
+
+Invariants (same §3.3 discipline as §2): negative wait times and non-numeric
+values are rejected, never clamped; missing readings are omitted (absent ≠
+zero); dedupe keys on (facilityId, observedAt, lane/metric set) with the
+latest `receivedAt` winning deterministically; `wait_minutes` is an OBSERVED
+value reported by CBP, never a derived metric; the verbatim lane update label
+and port status are displayed, not parsed into truth states. Source:
+`src/data/facilityMetric.ts`; fixture: `tests/fixtures/cbp-border-wait-el-paso.json`.
+
 ## 3. Track model (§5.3)
 
 Track construction preserves raw observations and derived interpolation
@@ -112,10 +150,15 @@ Geospatial definitions are versioned records with:
 - Review owner.
 - Source or rationale.
 
-Current status: the three MVP chokepoint profiles exist in
-`src/config/chokepoints.ts` with **placeholder geometry flagged
-`geometryStatus: "placeholder"`**. Real reviewed geofence coordinates are an
-open item; placeholder geofences must never be used for membership decisions.
+Current status (2026-09-10): nine reviewed geofences exist in
+`src/config/chokepoints.ts` — six maritime fences approved 2026-09-09
+(ADR-0011, geometry `2026-09-09-v1`) and three multimodal fences approved
+2026-09-10 (`el-paso-v1-2026-09-10`, `lax-v1-2026-09-10`): the LAX
+cargo-aircraft observation region and two El Paso crossing frames. The El Paso
+frames are DISPLAY FRAMING ONLY: facility metrics key on `facilityId` and are
+never geofence-membership computations (ADR-0013/0015). Review owner:
+ChrisSchmidt (GitHub: PCSchmidt); candidate provenance per vertex lives in
+`research/geofence-candidates.md`.
 
 ## 5. Derived metric model (§5.5)
 
@@ -153,8 +196,14 @@ generative explanation (§8). Structure per §5.6: `bundleId`, `createdAt`,
 `events`, `sourceHealth`, `claimsAllowed`, `claimsRejected`, and `versions`
 (schema, metric, detector, evaluator).
 
-The evidence builder, claim evaluator, and generator are Phase 4 deliverables
-and are deliberately not implemented in Phase 0/1.
+The evidence builder, claim evaluator, and generator ARE IMPLEMENTED
+(`src/agent/`, claim-evaluator-v1): typed intents over the §4.4 tool
+allowlist, deterministic snapshot-only tools, content-addressed evidence
+bundles, evaluator-gated answers (§8.3–8.5), and a text query surface.
+Groundedness: 25/25 labeled scenarios (`npm run eval:agent`). A deterministic
+voice path (browser Web Speech) renders the same evaluator-gated answers;
+transcripts are never persisted (§11.2). Facility-level signals carry their
+own contract (see §2a below, ADR-0015).
 
 ## 7. Source adapter contract (§5.1)
 

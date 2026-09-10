@@ -48,18 +48,19 @@ evaluator-accepted claims.
 
 ## Measured results (fixture mode unless noted)
 
-- **Deterministic core**: 268 tests across normalization, geofence machinery,
-  health states, metrics, detectors, UI render, agent, PWA, and server
-  integration — all green in CI without credentials or network.
+- **Deterministic core**: 326 tests across normalization, geofence machinery,
+  health states, metrics, detectors, adapters, agent, UI render, PWA, and
+  server integration — all green in CI without credentials or network.
 - **Detector evaluation** (`npm run eval`): v1 labeled suite — precision 1.0,
   recall 0.75, F1 0.857, 0 false positives, with documented known failures
   (`evaluation-reports/`).
-- **Agent groundedness** (`npm run eval:agent`): 19/19 scenarios — numeric
+- **Agent groundedness** (`npm run eval:agent`): 25/25 scenarios — numeric
   accuracy, provenance coverage, banned-language rejection (THREAT/CAUSE/
-  PREDICTION/INTENT), scope-overreach rejection, fabricated-number rejection,
-  abstention quality (`evaluation-reports/agent-2026-09-10.md`).
+  PREDICTION/INTENT), scope-overreach rejection, fabricated-number rejection
+  (facility claims included), abstention quality
+  (`evaluation-reports/agent-2026-09-10.md`).
 - **Replay performance** (`npm run perf:replay`, §12.5 budgets): replay render
-  mean 1.7–3.3 ms / p95 2.9–6.4 ms (budget 33 ms), scrub mean ~130 ms
+  mean ~3.0 ms / p95 ~4.7 ms (budget 33 ms), scrub mean ~128 ms
   (budget 250 ms), zero idle renders, 0.0% heap growth over globe
   mount/unmount cycles.
 - **Browser QA** (`npm run qa:browser`): both fixture chokepoints verified
@@ -72,7 +73,15 @@ evaluator-accepted claims.
 - **Operations**: `docker compose up -d` brings up app + Prometheus + Grafana
   with no credentials; Prometheus target `up = 1`; readiness and liveness
   endpoints answer honestly. Security review: 10 PASS checks
-  (`docs/security-review-2026-09-10.md`).
+  (`docs/security-review-2026-09-10.md`). The static fixture-mode demo is
+  CI-deployed to https://pcschmidt.github.io/chokepoint_app/ (verified live:
+  40/40 vessel pixels, PWA offline shell active).
+- **Multimodal (air + land)**: went through the identical admission gate —
+  adsb.lol admitted under ODbL (OpenSky rejected on its own terms), CBP wait
+  times admitted keyless (verified live, 85 crossings), rail deferred on
+  evidence. A separate FacilityMetric model keeps facility signals honest;
+  both live adapters are wired into the manager with fixture fallbacks and the
+  browser demo stays fixture-mode by design.
 
 ## What it deliberately does not do
 
@@ -86,8 +95,9 @@ evaluator-accepted claims.
 
 ## What the next phases would add
 
-- Live AIS ingestion behind the §6.1 admission gate with a hosted key proxy
-  (§10.2).
+- The §10.2 hosted API exposing the (already wired and tested) live adapters
+  to the browser: a small server-side snapshot endpoint, after which the UI's
+  live layers activate without contract changes.
 - Historical baselines from permitted retention sources (NOAA/DMA identified
   in `research/ais-provider-research.md`).
 - Optional hosted voice (OpenAI Realtime) behind the same evaluator gates;
@@ -97,12 +107,16 @@ evaluator-accepted claims.
 
 ## Honest limitations
 
-- All on-screen data is SIMULATED; the live path is a locally-run smoke tool,
-  not a wired product surface.
+- All on-screen data is SIMULATED; the live adapters are wired at the manager
+  level (tested) but the browser app never calls them — the browser-live path
+  (§10.2 hosted API) is deliberately unbuilt.
 - Singapore/Malacca fences are all-approximate pending re-derivation from IMO
-  routeing data (v2 geometry candidate).
-- Bulk carriers are not separable from cargo via ITU type codes — documented,
-  not invented.
+  routeing data (v2 geometry candidate); the LAX air box is a regional query
+  region, not an FAA sector (a v2 could tighten along published approach
+  procedures).
+- Bulk carriers are not separable from cargo via ITU type codes, and aircraft
+  broadcast no cargo flag — both classification limits are documented, not
+  invented; operator cohorts are inferred, never asserted.
 - The offline base map is blurry at chokepoint zoom; the keyless Esri stack
   needs network.
 - One browser voice path is supported (see the voice layer notes in

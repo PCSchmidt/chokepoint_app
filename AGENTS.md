@@ -109,9 +109,13 @@ Voice actions must be transactional and observable:
 - Destructive or expensive actions require explicit confirmation in later
   hosted versions.
 
-## 8. Fixture-mode restriction (Phase 0/1)
+## 8. Source-provenance restriction (§6.1, updated 2026-09-10)
 
-Until the Phase 0 exit criteria (§17) are met and a provider passes the §6.1
-admission gate, no agent component may consume anything other than checked-in
-fixtures carrying explicit `SIMULATED` provenance. Simulated observations are
-never presented as live AIS data and never contribute to observed counts.
+Agent tools read ONLY manager snapshots; the browser demo serves checked-in
+SIMULATED fixtures with explicit `SIMULATED` provenance. Simulated records
+are never presented as live data and never contribute to observed counts.
+Live sources enter only after the §6.1 gate: AISStream (ADR-0010,
+risk-accepted), adsb.lol (ADR-0012, ODbL), CBP wait times (ADR-0013, keyless
+facility metrics per ADR-0015); OpenSky was rejected for live use on its own
+terms (ADR-0012); rail is deferred (ADR-0014). Facility wait-time answers and
+aircraft answers pass the same evaluator gates as maritime claims.
