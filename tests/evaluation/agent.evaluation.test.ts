@@ -169,3 +169,59 @@ describe("groundedness: derived-vs-observed labeling (§12.4)", async () => {
     expect(text).toMatch(/derived from|Fraction of/);
   });
 });
+
+describe("UI-action intents (§4.4, §8.6)", async () => {
+  const manager = await createDataManager({ mode: "fixture" });
+
+  it("parses focus/replay/window actions", () => {
+    expect(parseQuestion("show me Singapore", manager.listChokepoints()).intent?.tool).toBe("focus_chokepoint");
+    expect(parseQuestion("start replay", manager.listChokepoints()).intent?.tool).toBe("start_replay");
+    expect(parseQuestion("stop the replay", manager.listChokepoints()).intent?.tool).toBe("stop_replay");
+    expect(parseQuestion("set the window to the last 24 hours", manager.listChokepoints()).intent?.tool).toBe("set_time_window");
+  });
+
+  it("focus returns a validated uiAction, no claims, accepted verdict", async () => {
+    const { bundle, verdict, answer, uiAction } = await askAgent("show me Singapore", manager, {
+      chokepointId: "long-beach-approach",
+      window: WINDOW,
+    });
+    expect(uiAction).toEqual({ action: "focus_chokepoint", chokepointId: "singapore-malacca-approach" });
+    expect(bundle.tool!.claims).toHaveLength(0);
+    expect(verdict).toBeNull(); // no analytical claims to evaluate
+    expect(answer.verdict).toBe("accepted");
+    expect(answer.text).toMatch(/Action accepted: focus/);
+    // §8.6: the tool-level text must NOT claim the visual state changed.
+    expect(answer.text).not.toMatch(/now shows|is now displayed|camera moved/);
+  });
+
+  it("set_time_window without a window refuses honestly", async () => {
+    const { uiAction, answer } = await askAgent("set the time window at Long Beach", manager, {
+      chokepointId: "long-beach-approach",
+      window: WINDOW,
+    });
+    expect(uiAction).toBeNull();
+    expect(answer.text).toMatch(/No window specified/);
+  });
+
+  it("set_time_window with a window returns the action", async () => {
+    const { uiAction, answer } = await askAgent("set the window to the last 24 hours", manager, {
+      chokepointId: "long-beach-approach",
+      window: WINDOW,
+    });
+    expect(uiAction).toEqual({ action: "set_time_window", window: "last_24_hours" });
+    expect(answer.text).toMatch(/time window set to last 24 hours/);
+  });
+
+  it("start/stop replay actions are accepted transactionally", async () => {
+    const start = await askAgent("start replay", manager, { chokepointId: "long-beach-approach", window: WINDOW });
+    expect(start.uiAction).toEqual({ action: "start_replay" });
+    expect(start.answer.text).toMatch(/replay started/);
+    const stop = await askAgent("stop replay", manager, { chokepointId: "long-beach-approach", window: WINDOW });
+    expect(stop.uiAction).toEqual({ action: "stop_replay" });
+  });
+
+  it("no context + no named chokepoint refuses instead of guessing scope", async () => {
+    const { answer } = await askAgent("show me the situation", manager, { chokepointId: null, window: WINDOW });
+    expect(answer.verdict).toBe("rejected");
+  });
+});

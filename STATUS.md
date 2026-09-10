@@ -80,6 +80,22 @@ completion claims. Claims here must match the repository.
   derived-vs-observed labeling, abstention quality. **19/19 PASS**
   (`evaluation-reports/agent-2026-09-10.md`). 15 vitest scenarios assert the
   same rules in CI.
+- **UI-action intents wired (§4.4/§8.6)**: focus_chokepoint,
+  set_time_window, start_replay, stop_replay parse and return VALIDATED
+  UiAction requests (no claims; nothing for the evaluator to gate). main.ts
+  applies them through app state and only then reports "Applied" — the tool
+  note never claims the visual state changed by itself. set_time_window
+  resolves relative windows against available data (clamped, never widened);
+  start_replay restarts from the window start when the cursor sits at the
+  end (advance clamps and would auto-pause instantly).
+- **Replay cursor bug fixed (§12.5)**: the tick loop captured the timeline
+  state BEFORE advancing and published a one-tick-stale cursor, which the
+  subscriber then seeked back — the visible cursor never moved during
+  replay. The tick now publishes the post-advance cursor and playing flag;
+  the play/pause button and the subscriber make app state the single source
+  of truth (playing syncs into the controller; auto-pause at window end is
+  state, not just controller-internal). Play-from-window-end now restarts
+  from the window start instead of silently doing nothing.
 - Phase 4 exit criteria met for the text surface: unsupported claims are
   rejected or caveated; numeric answers match deterministic metrics; provider
   failure renders honest UNKNOWN (no fabricated answers). Voice remains

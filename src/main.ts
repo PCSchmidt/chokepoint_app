@@ -36,6 +36,8 @@ import { renderEvidenceDrawer } from "./ui/evidenceDrawer";
 import { renderWatchlistSaveForm, renderWatchlistPanel, type WatchlistSaveSelection } from "./ui/watchlist";
 import { renderAgentPanel, renderAgentAnswer, type AgentAnswerView } from "./ui/agentPanel";
 import { askAgent } from "./agent/pipeline";
+import { resolveWindow } from "./agent/intent";
+import type { UiAction } from "./agent/tools";
 import {
   loadWatchlist,
   saveWatchlist,
@@ -239,17 +241,65 @@ function reviewedRings(chokepointId: string): Array<{ id: string; ring: PolygonR
 async function handleAgentQuestion(question: string): Promise<void> {
   const snapshot = state.get();
   const answerEl = required("#agent");
-  const { answer } = await askAgent(question, manager, {
+  const { answer, uiAction } = await askAgent(question, manager, {
     chokepointId: snapshot.chokepointId,
     window: snapshot.timeWindow,
   });
+  let appliedNote: string | null = null;
+  if (uiAction) {
+    const outcome = applyAgentAction(uiAction);
+    appliedNote = outcome ? "Applied to the current view." : "Not applied — no investigation is open.";
+  }
   renderAgentAnswer(answerEl, {
-    text: answer.text,
+    text: appliedNote ? `${answer.text} ${appliedNote}` : answer.text,
     caveats: answer.caveats,
     rejected: answer.rejected,
     evidenceRefs: answer.evidenceRefs,
     verdict: answer.verdict,
   } satisfies AgentAnswerView);
+}
+
+/**
+ * Apply a validated §4.4 UI action through app state (§8.6: camera/layer
+ * ownership is separate from analytics). Returns true only when the state
+ * update was actually issued — the response may claim success only then.
+ */
+function applyAgentAction(action: UiAction): boolean {
+  const snapshot = state.get();
+  switch (action.action) {
+    case "focus_chokepoint": {
+      const window = manager.defaultWindow();
+      state.update({
+        chokepointId: action.chokepointId,
+        timeWindow: window,
+        replay: { cursor: window.endAt, playing: false },
+      });
+      return true;
+    }
+    case "set_time_window": {
+      if (!snapshot.timeWindow) return false;
+      const resolved = resolveWindow(action.window, snapshot.timeWindow.endAt, manager.defaultWindow());
+      state.update({ timeWindow: resolved, replay: { cursor: resolved.endAt, playing: false } });
+      return true;
+    }
+    case "start_replay": {
+      if (!snapshot.timeWindow) return false;
+      // Starting at the window end would auto-pause immediately (advance
+      // clamps at the end): restart from the window start in that case.
+      const atEnd =
+        snapshot.replay.cursor !== null && snapshot.replay.cursor >= snapshot.timeWindow.endAt;
+      state.update({
+        replay: {
+          playing: true,
+          ...(atEnd ? { cursor: snapshot.timeWindow.startAt } : {}),
+        },
+      });
+      return true;
+    }
+    case "stop_replay":
+      state.update({ replay: { playing: false } });
+      return true;
+  }
 }
 
 function persistWatchlist(): void {
@@ -408,8 +458,21 @@ function renderTimelineControls(snap: ChokepointSnapshot): void {
     <span class="timeline-window">${snap.window.startAt} → ${snap.window.endAt} (SIM)</span>
   `;
   el.querySelector<HTMLButtonElement>("button")!.addEventListener("click", () => {
-    t.playing ? timeline!.pause() : timeline!.play();
-    renderTimelineControls(snap);
+    const current = state.get();
+    // Starting at the window end would auto-pause on the first tick (advance
+    // clamps at the end): restart from the window start, same as the agent
+    // start_replay action.
+    const atEnd =
+      !current.replay.playing &&
+      current.replay.cursor !== null &&
+      current.timeWindow !== null &&
+      current.replay.cursor >= current.timeWindow.endAt;
+    state.update({
+      replay: {
+        playing: !current.replay.playing,
+        ...(atEnd && current.timeWindow ? { cursor: current.timeWindow.startAt } : {}),
+      },
+    });
   });
   el.querySelector<HTMLInputElement>("input")!.addEventListener("input", (e) => {
     const cursor = new Date(Number((e.target as HTMLInputElement).value)).toISOString();
@@ -443,11 +506,13 @@ function renderShareLink(): void {
 function ensureReplayLoop(): void {
   if (replayTick !== null || !timeline) return;
   replayTick = window.setInterval(() => {
-    const t = timeline!.get();
-    if (t.playing) {
-      timeline!.advance(500); // fixed 500ms tick: deterministic given dt (§12.5)
-      state.update({ replay: { cursor: t.cursor } });
-    }
+    const before = timeline!.get();
+    if (!before.playing) return;
+    // Advance FIRST, then publish the NEW cursor. Capturing before the
+    // advance publishes a one-tick-stale cursor that the subscriber then
+    // seeks back to — the cursor would never visibly move (§12.5).
+    const after = timeline!.advance(500); // fixed 500ms tick: deterministic given dt
+    state.update({ replay: { cursor: after.cursor, playing: after.playing } });
   }, 500);
 }
 
@@ -458,6 +523,18 @@ state.subscribe((snapshot) => {
   }
   if (!timeline) {
     timeline = new TimelineController(snapshot.timeWindow, snapshot.replay.speedMultiplier);
+  } else if (
+    timeline.get().window.startAt !== snapshot.timeWindow.startAt ||
+    timeline.get().window.endAt !== snapshot.timeWindow.endAt
+  ) {
+    // Window change (e.g. set_time_window action): re-bind deterministically.
+    timeline.setWindow(snapshot.timeWindow);
+  }
+  // App state owns playing (§8.6): play/pause — from the button, an agent
+  // action, or a restored share link — flows through the snapshot.
+  if (snapshot.replay.playing !== timeline.get().playing) {
+    if (snapshot.replay.playing) timeline.play();
+    else timeline.pause();
   }
   timeline.seek(snapshot.replay.cursor ?? snapshot.timeWindow.endAt);
   if (snapshot.chokepointId !== shownChokepointId) {

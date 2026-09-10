@@ -9,7 +9,7 @@ import type { DataManager } from "../data/manager";
 import { buildEvidenceBundle, type EvidenceBundle } from "./evidenceBundle";
 import { evaluateToolResult, type EvaluatorVerdict } from "./evaluator";
 import { answerQuestion, type AgentAnswer } from "./generator";
-import type { AgentClaim } from "./tools";
+import type { AgentClaim, UiAction } from "./tools";
 
 export interface AgentContext {
   /** The chokepoint currently under investigation (null = launcher). */
@@ -36,10 +36,27 @@ export async function askAgent(
   question: string,
   manager: DataManager,
   context: AgentContext,
-): Promise<{ bundle: EvidenceBundle; verdict: EvaluatorVerdict | null; answer: AgentAnswer }> {
+): Promise<{ bundle: EvidenceBundle; verdict: EvaluatorVerdict | null; answer: AgentAnswer; uiAction: UiAction | null }> {
+  return askAgentWithContext(question, manager, context, null);
+}
+
+/**
+ * Variant with an explicit context chokepoint override (the UI passes the
+ * chokepoint currently under investigation even when the question does not
+ * name one).
+ */
+export async function askAgentWithContext(
+  question: string,
+  manager: DataManager,
+  context: AgentContext,
+  contextChokepointId: string | null,
+): Promise<{ bundle: EvidenceBundle; verdict: EvaluatorVerdict | null; answer: AgentAnswer; uiAction: UiAction | null }> {
+  const effectiveContext = contextChokepointId
+    ? { ...context, chokepointId: context.chokepointId ?? contextChokepointId }
+    : context;
   const bundle = buildEvidenceBundle(question, manager, {
-    chokepointId: context.chokepointId,
-    window: context.window ?? manager.defaultWindow(),
+    chokepointId: effectiveContext.chokepointId,
+    window: effectiveContext.window ?? manager.defaultWindow(),
   });
   if (!bundle.tool) {
     return { bundle, verdict: null, answer: answerQuestion(bundle, {
@@ -48,7 +65,25 @@ export async function askAgent(
       rejectedClaims: [],
       requiredCaveats: [bundle.abstention ?? "Insufficient evidence to answer."],
       evaluatorVersion: "claim-evaluator-v1",
-    }) };
+    }), uiAction: null };
+  }
+  // UI-action tools carry no analytical claims: nothing for the evaluator to
+  // gate (§8.6 — transactional acceptance, applied by the caller). The
+  // response text is the tool's acceptance note, never a claim the visual
+  // state already changed.
+  if (bundle.tool.uiAction) {
+    return {
+      bundle,
+      verdict: null,
+      answer: answerQuestion(bundle, {
+        verdict: "accepted",
+        acceptedClaims: [],
+        rejectedClaims: [],
+        requiredCaveats: [],
+        evaluatorVersion: "claim-evaluator-v1",
+      }),
+      uiAction: bundle.tool.uiAction,
+    };
   }
   // Snapshot metric values: the claims reference these ids. explain_metric
   // has no window (it documents a formula), so fall back to context data.
@@ -64,7 +99,7 @@ export async function askAgent(
   });
   const verdict = evaluateToolResult(bundle.tool, metricValues, bundle.sourceHealth);
   const answer = answerQuestion(bundle, verdict);
-  return { bundle, verdict, answer };
+  return { bundle, verdict, answer, uiAction: null };
 }
 
 export type { AgentClaim };

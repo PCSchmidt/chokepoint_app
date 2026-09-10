@@ -56,13 +56,16 @@ export const KNOWN_METRIC_IDS = [
 
 /** Deterministic phrase table: tool -> trigger patterns (lowercase). */
 const TOOL_PATTERNS: ReadonlyArray<{ tool: ToolName; patterns: RegExp[] }> = [
+  { tool: "start_replay", patterns: [/\b(start|play|resume|run) (the )?(replay|playback)\b/i] },
+  { tool: "stop_replay", patterns: [/\b(stop|pause|halt) (the )?(replay|playback)\b/i] },
+  { tool: "set_time_window", patterns: [/\b(set|change|narrow|widen) (the )?(time )?window\b/i, /\b(show|display) (me )?the last (6|24|72) ?h(ours)?\b/i] },
   { tool: "compare_with_baseline", patterns: [/\bcompared? (to|with|against)\b/i, /\bvs\.? (the )?baseline\b/i, /\bchange (from|vs) baseline\b/i] },
   { tool: "count_vessels", patterns: [/\bhow many (vessels|ships|boats)\b/i, /\bvessel count\b/i] },
-  { tool: "compare_with_baseline", patterns: [/\bcompared? (to|with|against)\b/i, /\bvs\.? (the )?baseline\b/i, /\bchange (from|vs) baseline\b/i] },
   { tool: "list_recent_changes", patterns: [/\bwhat (has )?changed\b/i, /\brecent (changes|events)\b/i, /\bany events\b/i] },
   { tool: "summarize_chokepoint", patterns: [/\bsummar(y|ize|ise)\b/i, /\boverview\b/i, /\bwhat.s (the )?situation\b/i] },
-  { tool: "show_vessel_cohort", patterns: [/\b(show|list|which) (the )?(vessels|ships|cohort)\b/i, /\bwaiting cohort\b/i, /\banchored vessels\b/i] },
+  { tool: "show_vessel_cohort", patterns: [/\b(show|list|which) (me )?(the )?(vessels|ships|cohort)\b/i, /\bwaiting cohort\b/i, /\banchored vessels\b/i] },
   { tool: "explain_metric", patterns: [/\bhow is .*calculated\b/i, /\bwhat does .*mean\b/i, /\bexplain\b/i] },
+  { tool: "focus_chokepoint", patterns: [/\b(focus|goto|go to|take me to|show me|open|view)\b/i] },
 ];
 
 function matchTool(text: string): ToolName | null {
@@ -130,7 +133,8 @@ export function parseQuestion(
   // question does not say "current/here" — geographic scope is never expanded
   // or guessed (§8.2).
   const contextWords = /\b(current|this|here)\b/.test(text.toLowerCase());
-  const needsTarget = tool !== "explain_metric" && tool !== "set_time_window";
+  const needsTarget =
+    tool !== "explain_metric" && tool !== "set_time_window" && tool !== "start_replay" && tool !== "stop_replay";
   if (needsTarget && !chokepointId && !contextWords) {
     return {
       intent: null,

@@ -22,6 +22,18 @@ export interface EvidencePointer {
   id: string;
 }
 
+/**
+ * Typed UI action request (§8.6: camera/layer changes have separate
+ * ownership from analytical results). The tool VALIDATES the request and
+ * returns it; the caller applies it through app state and only then may the
+ * response claim the visual state changed.
+ */
+export type UiAction =
+  | { action: "focus_chokepoint"; chokepointId: string }
+  | { action: "set_time_window"; window: "last_6_hours" | "last_24_hours" | "last_3_days" }
+  | { action: "start_replay" }
+  | { action: "stop_replay" };
+
 export interface AgentClaim {
   id: string;
   text: string;
@@ -46,6 +58,8 @@ export interface ToolResult {
     lastObservationAt: string | null;
     scopeLabel: string;
   } | null;
+  /** Present only for §4.4 UI-action tools (validated request, §8.6). */
+  uiAction?: UiAction | undefined;
 }
 
 export const TOOLS_VERSION = "agent-tools-v1";
@@ -107,8 +121,9 @@ export function runTool(
   manager: DataManager,
   window: { startAt: string; endAt: string },
 ): ToolResult {
-  const chokepointId =
-    intent.chokepointId ?? (manager.listChokepoints().length > 0 ? manager.listChokepoints()[0]!.id : null);
+  // The caller (pipeline) resolves context; a null chokepoint here means no
+  // scope is established — refusing beats guessing the first profile (§8.2).
+  const chokepointId = intent.chokepointId;
   if (!chokepointId) {
     return { tool: intent.tool, status: "refused", note: "no chokepoint in context", chokepointId: null, window: null, claims: [], coverage: null };
   }
@@ -192,6 +207,64 @@ export function runTool(
         coverage: null,
       };
     }
+    case "focus_chokepoint":
+      return {
+        tool: intent.tool,
+        status: "ok",
+        // §8.6: accepted at the tool level; the response may only claim the
+        // visual state changed once the caller has applied it.
+        note: `Action accepted: focus ${manager.listChokepoints().find((c) => c.id === chokepointId)?.name ?? chokepointId}.`,
+        chokepointId,
+        window: null,
+        claims: [],
+        coverage: null,
+        uiAction: { action: "focus_chokepoint", chokepointId },
+      };
+    case "set_time_window": {
+      if (!intent.window) {
+        return {
+          tool: intent.tool,
+          status: "refused",
+          note: "No window specified — try \u201clast 6 hours\u201d, \u201clast 24 hours\u201d, or \u201clast 3 days\u201d.",
+          chokepointId,
+          window: null,
+          claims: [],
+          coverage: null,
+        };
+      }
+      return {
+        tool: intent.tool,
+        status: "ok",
+        note: `Action accepted: time window set to ${intent.window.replace(/_/g, " ")}.`,
+        chokepointId,
+        window: null,
+        claims: [],
+        coverage: null,
+        uiAction: { action: "set_time_window", window: intent.window },
+      };
+    }
+    case "start_replay":
+      return {
+        tool: intent.tool,
+        status: "ok",
+        note: "Action accepted: replay started (from the window start when the cursor sat at the end).",
+        chokepointId,
+        window: null,
+        claims: [],
+        coverage: null,
+        uiAction: { action: "start_replay" },
+      };
+    case "stop_replay":
+      return {
+        tool: intent.tool,
+        status: "ok",
+        note: "Action accepted: replay stopped.",
+        chokepointId,
+        window: null,
+        claims: [],
+        coverage: null,
+        uiAction: { action: "stop_replay" },
+      };
     default:
       return {
         tool: intent.tool,
