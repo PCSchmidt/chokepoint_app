@@ -46,3 +46,6 @@ coverage/
 # Raw downloaded research sources (kept locally for verification, never committed:
 # provider terms of use / size / redistribution concerns)
 research/sources/raw/
+
+# Cesium runtime assets (synced from node_modules by scripts/sync-cesium.mjs)
+public/cesium/

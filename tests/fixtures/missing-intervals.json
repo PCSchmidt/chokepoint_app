@@ -2,9 +2,9 @@
   "fixtureId": "missing-intervals",
   "truthState": "SIMULATED",
   "simulated": true,
-  "description": "SIMULATED: one cargo vessel with a 3-hour position gap between reports 2 and 3, exercising missing-interval handling. Entirely synthetic; not real AIS data.",
+  "description": "SIMULATED: one cargo vessel inside the reviewed fence v1 with a 3-hour position gap between reports 2 and 3. Entirely synthetic; not real AIS data.",
   "provenance": {
-    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
     "providerId": "simulated-fixture",
     "licenseId": "CC0-1.0-synthetic"
   },
@@ -23,12 +23,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.58,
-        "longitude": -118.3
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 45.0
+        "headingDegrees": 50.0
       },
       "observedAt": "2026-09-09T12:00:00Z",
       "receivedAt": "2026-09-09T12:01:00Z",
@@ -50,12 +50,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.59,
-        "longitude": -118.28
+        "latitude": 33.682,
+        "longitude": -118.175
       },
       "kinematics": {
         "speedKnots": 13.5,
-        "headingDegrees": 45.0
+        "headingDegrees": 50.0
       },
       "observedAt": "2026-09-09T12:10:00Z",
       "receivedAt": "2026-09-09T12:11:00Z",
@@ -77,12 +77,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.62,
-        "longitude": -118.2
+        "latitude": 33.69,
+        "longitude": -118.16
       },
       "kinematics": {
         "speedKnots": 14.0,
-        "headingDegrees": 48.0
+        "headingDegrees": 52.0
       },
       "observedAt": "2026-09-09T15:10:00Z",
       "receivedAt": "2026-09-09T15:11:00Z",
@@ -104,12 +104,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.63,
-        "longitude": -118.18
+        "latitude": 33.695,
+        "longitude": -118.15
       },
       "kinematics": {
         "speedKnots": 14.2,
-        "headingDegrees": 48.0
+        "headingDegrees": 52.0
       },
       "observedAt": "2026-09-09T15:20:00Z",
       "receivedAt": "2026-09-09T15:21:00Z",

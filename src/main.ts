@@ -8,6 +8,11 @@
  * hash only (§11.1/§11.2 — no secrets).
  */
 
+// Cesium reads window.CESIUM_BASE_URL at RUNTIME (the Vite `define` only
+// rewrites bare identifiers — it does not set the window property). Without
+// this, the viewer cannot load its workers/imagery and render fails.
+window.CESIUM_BASE_URL = "/cesium/";
+
 import "./styles.css";
 import { startup } from "./app/startup";
 import { shareUrl } from "./app/shareState";

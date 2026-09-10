@@ -16,7 +16,7 @@ export interface TimelineState {
   speedMultiplier: number;
 }
 
-export const DEFAULT_REPLAY_LOOKBACK_SECONDS = 1800;
+export const DEFAULT_REPLAY_LOOKBACK_SECONDS = 21600; // 6h: shows a full fixture timeline on first load
 
 /** ISO with second precision when the ms part is zero (".000Z" -> "Z"), matching the rest of the data model. */
 export function isoSecond(millis: number): string {

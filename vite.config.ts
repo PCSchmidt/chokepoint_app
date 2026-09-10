@@ -1,5 +1,4 @@
 import { defineConfig } from "vitest/config";
-import { viteStaticCopy } from "vite-plugin-static-copy";
 
 // Phase 3: CesiumJS globe with a KEYLESS map stack (plan §4.1, §9.1, ADR-0003).
 // Cesium's runtime assets (workers, widgets, offline Natural Earth II imagery)
@@ -9,16 +8,6 @@ export default defineConfig({
   define: {
     CESIUM_BASE_URL: JSON.stringify("/cesium/"),
   },
-  plugins: [
-    viteStaticCopy({
-      targets: [
-        { src: "node_modules/cesium/Build/Cesium/Workers", dest: "cesium" },
-        { src: "node_modules/cesium/Build/Cesium/ThirdParty", dest: "cesium" },
-        { src: "node_modules/cesium/Build/Cesium/Assets", dest: "cesium" },
-        { src: "node_modules/cesium/Build/Cesium/Widgets", dest: "cesium" },
-      ],
-    }),
-  ],
   build: {
     target: "es2022",
     sourcemap: true,

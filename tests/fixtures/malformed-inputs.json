@@ -2,9 +2,9 @@
   "fixtureId": "malformed-inputs",
   "truthState": "SIMULATED",
   "simulated": true,
-  "description": "SIMULATED: hardening fixture with six deliberately malformed records (latitude out of range, longitude out of range, invalid timestamp, invalid entityType, invalid heading, missing licenseId) alongside two valid records. The loader must reject exactly the malformed ones. Entirely synthetic; not real AIS data.",
+  "description": "SIMULATED: hardening fixture with six deliberately malformed records alongside two valid records. Entirely synthetic; not real AIS data.",
   "provenance": {
-    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
     "providerId": "simulated-fixture",
     "licenseId": "CC0-1.0-synthetic"
   },
@@ -27,8 +27,8 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.3
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {
         "speedKnots": 12.0,
@@ -54,8 +54,8 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.61,
-        "longitude": -118.28
+        "latitude": 33.682,
+        "longitude": -118.175
       },
       "kinematics": {
         "speedKnots": 12.5,
@@ -82,7 +82,7 @@
       "entityType": "cargo_vessel",
       "position": {
         "latitude": 95.0,
-        "longitude": -118.3
+        "longitude": -118.18
       },
       "kinematics": {},
       "observedAt": "2026-09-09T12:00:00Z",
@@ -105,7 +105,7 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
+        "latitude": 33.68,
         "longitude": 200.0
       },
       "kinematics": {},
@@ -129,8 +129,8 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.3
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {},
       "observedAt": "not-a-timestamp",
@@ -153,8 +153,8 @@
       "mode": "sea",
       "entityType": "yacht",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.3
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {},
       "observedAt": "2026-09-09T12:03:00Z",
@@ -177,8 +177,8 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.3
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {
         "headingDegrees": 400
@@ -203,8 +203,8 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.3
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {},
       "observedAt": "2026-09-09T12:05:00Z",

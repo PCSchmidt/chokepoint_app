@@ -2,9 +2,9 @@
   "fixtureId": "out-of-order",
   "truthState": "SIMULATED",
   "simulated": true,
-  "description": "SIMULATED: five observations delivered out of chronological order (indices 3,1,5,2,4), exercising deterministic reordering. Entirely synthetic; not real AIS data.",
+  "description": "SIMULATED: five observations inside the reviewed fence v1 delivered out of chronological order (indices 3,1,5,2,4). Entirely synthetic; not real AIS data.",
   "provenance": {
-    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
     "providerId": "simulated-fixture",
     "licenseId": "CC0-1.0-synthetic"
   },
@@ -20,12 +20,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.26
+        "latitude": 33.682,
+        "longitude": -118.166
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 30.0
+        "headingDegrees": 62.0
       },
       "observedAt": "2026-09-09T12:10:00Z",
       "receivedAt": "2026-09-09T12:11:00Z",
@@ -47,12 +47,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.58,
-        "longitude": -118.3
+        "latitude": 33.67,
+        "longitude": -118.19
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 30.0
+        "headingDegrees": 62.0
       },
       "observedAt": "2026-09-09T12:00:00Z",
       "receivedAt": "2026-09-09T12:01:00Z",
@@ -74,12 +74,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.62,
-        "longitude": -118.22
+        "latitude": 33.694,
+        "longitude": -118.142
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 30.0
+        "headingDegrees": 62.0
       },
       "observedAt": "2026-09-09T12:20:00Z",
       "receivedAt": "2026-09-09T12:21:00Z",
@@ -101,12 +101,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.59,
-        "longitude": -118.28
+        "latitude": 33.676,
+        "longitude": -118.178
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 30.0
+        "headingDegrees": 62.0
       },
       "observedAt": "2026-09-09T12:05:00Z",
       "receivedAt": "2026-09-09T12:06:00Z",
@@ -128,12 +128,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.61,
-        "longitude": -118.24
+        "latitude": 33.688,
+        "longitude": -118.154
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 30.0
+        "headingDegrees": 62.0
       },
       "observedAt": "2026-09-09T12:15:00Z",
       "receivedAt": "2026-09-09T12:16:00Z",

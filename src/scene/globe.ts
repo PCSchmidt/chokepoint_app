@@ -12,6 +12,11 @@
  */
 
 import * as Cesium from "cesium";
+
+// Safety net for any import order: Cesium needs the base URL at runtime.
+if (typeof window !== "undefined" && !window.CESIUM_BASE_URL) {
+  (window as unknown as { CESIUM_BASE_URL: string }).CESIUM_BASE_URL = "/cesium/";
+}
 import { frameForRing, type CameraFrame } from "./camera";
 import { getMapStack, DEFAULT_MAP_STACK, type MapStackId } from "./mapStack";
 import type { PolygonRing } from "../config/chokepoints";

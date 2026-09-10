@@ -12,15 +12,18 @@
     "lint": "tsc --noEmit",
     "eval": "tsx scripts/run-evaluation.ts",
     "smoke": "tsx scripts/aisstream-smoke.ts",
-    "debug": "tsx scripts/aisstream-debug.ts"
+    "debug": "tsx scripts/aisstream-debug.ts",
+    "qa:browser": "tsx scripts/qa-browser.ts",
+    "predev": "node scripts/sync-cesium.mjs",
+    "prebuild": "node scripts/sync-cesium.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
     "happy-dom": "^20.14.3",
+    "playwright": "^1.63.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
-    "vite-plugin-static-copy": "^4.1.1",
     "vitest": "^5.0.0"
   },
   "license": "MIT",

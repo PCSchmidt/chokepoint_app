@@ -205,6 +205,11 @@ describe("timeline and replay determinism (§12.5 Phase 3 exit)", () => {
     const w = replayWindow("2026-09-09T13:30:00Z", 1800);
     expect(w).toEqual({ startAt: "2026-09-09T13:00:00Z", endAt: "2026-09-09T13:30:00Z" });
     expect(replayWindow("2026-09-09T13:30:00Z", 1800)).toEqual(w);
+    // App default look-back covers a full fixture timeline (6h).
+    expect(replayWindow("2026-09-09T15:20:00Z")).toEqual({
+      startAt: "2026-09-09T09:20:00Z",
+      endAt: "2026-09-09T15:20:00Z",
+    });
   });
 
   it("seek clamps into the window and rejects garbage", () => {

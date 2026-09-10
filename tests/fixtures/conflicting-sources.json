@@ -2,16 +2,16 @@
   "fixtureId": "conflicting-sources",
   "truthState": "SIMULATED",
   "simulated": true,
-  "description": "SIMULATED: two simulated providers report the same physical vessel at the same instant with different positions; both records must remain visible (plan section 3.3: conflicting observations stay in the evidence record). Entirely synthetic; not real AIS data.",
+  "description": "SIMULATED: two simulated providers report the same vessel inside the reviewed fence v1 at one instant with different positions; both stay visible (\u00a73.3). Entirely synthetic; not real AIS data.",
   "provenance": {
-    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
     "providerId": "simulated-fixture",
     "licenseId": "CC0-1.0-synthetic"
   },
   "scenario": {
     "expectedObservations": 2,
     "expectedUniqueAfterDedupe": 2,
-    "note": "same physical vessel, two provider identities; conflict resolution is a Phase 2 analytics concern"
+    "note": "conflict resolution is a Phase 2+ concern"
   },
   "observations": [
     {
@@ -20,12 +20,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.6,
-        "longitude": -118.22
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {
         "speedKnots": 12.0,
-        "headingDegrees": 70.0
+        "headingDegrees": 66.0
       },
       "observedAt": "2026-09-09T12:00:00Z",
       "receivedAt": "2026-09-09T12:01:00Z",
@@ -47,12 +47,12 @@
       "mode": "sea",
       "entityType": "cargo_vessel",
       "position": {
-        "latitude": 33.58,
-        "longitude": -118.25
+        "latitude": 33.69,
+        "longitude": -118.16
       },
       "kinematics": {
         "speedKnots": 13.0,
-        "headingDegrees": 75.0
+        "headingDegrees": 70.0
       },
       "observedAt": "2026-09-09T12:00:00Z",
       "receivedAt": "2026-09-09T12:01:00Z",

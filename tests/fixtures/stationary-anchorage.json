@@ -2,9 +2,9 @@
   "fixtureId": "stationary-anchorage",
   "truthState": "SIMULATED",
   "simulated": true,
-  "description": "SIMULATED: single tanker holding station in an anchorage, five positions within meters, 0.1-0.3 knots. Entirely synthetic; not real AIS data.",
+  "description": "SIMULATED: single tanker holding station inside the reviewed outer-anchorage fence v1, 0.1-0.3 knots. Entirely synthetic; not real AIS data.",
   "provenance": {
-    "generatedBy": "chokepoint synthetic fixture generator v0 (hand-authored, deterministic)",
+    "generatedBy": "chokepoint synthetic fixture generator v1 (membership-verified against reviewed fence 2026-09-09-v1)",
     "providerId": "simulated-fixture",
     "licenseId": "CC0-1.0-synthetic"
   },
@@ -20,8 +20,8 @@
       "mode": "sea",
       "entityType": "tanker",
       "position": {
-        "latitude": 33.65,
-        "longitude": -118.2
+        "latitude": 33.68,
+        "longitude": -118.18
       },
       "kinematics": {
         "speedKnots": 0.2,
@@ -47,8 +47,8 @@
       "mode": "sea",
       "entityType": "tanker",
       "position": {
-        "latitude": 33.65,
-        "longitude": -118.19995
+        "latitude": 33.68,
+        "longitude": -118.17995
       },
       "kinematics": {
         "speedKnots": 0.1,
@@ -74,8 +74,8 @@
       "mode": "sea",
       "entityType": "tanker",
       "position": {
-        "latitude": 33.65,
-        "longitude": -118.1999
+        "latitude": 33.68,
+        "longitude": -118.1799
       },
       "kinematics": {
         "speedKnots": 0.2,
@@ -101,8 +101,8 @@
       "mode": "sea",
       "entityType": "tanker",
       "position": {
-        "latitude": 33.65,
-        "longitude": -118.19985
+        "latitude": 33.68,
+        "longitude": -118.17985
       },
       "kinematics": {
         "speedKnots": 0.1,
@@ -128,8 +128,8 @@
       "mode": "sea",
       "entityType": "tanker",
       "position": {
-        "latitude": 33.65,
-        "longitude": -118.1998
+        "latitude": 33.68,
+        "longitude": -118.1798
       },
       "kinematics": {
         "speedKnots": 0.2,
