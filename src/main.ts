@@ -35,7 +35,9 @@ import { renderEventCards } from "./overlays/eventCards";
 import { renderEvidenceDrawer } from "./ui/evidenceDrawer";
 import { renderWatchlistSaveForm, renderWatchlistPanel, type WatchlistSaveSelection } from "./ui/watchlist";
 import { renderAgentPanel, renderAgentAnswer, type AgentAnswerView } from "./ui/agentPanel";
+import { renderVoicePanel, setVoiceListening } from "./ui/voicePanel";
 import { askAgent } from "./agent/pipeline";
+import { detectVoiceAvailability, runVoiceTurn, speakableAnswer, type SpeechRecognitionLike } from "./agent/voiceSession";
 import { resolveWindow } from "./agent/intent";
 import type { UiAction } from "./agent/tools";
 import {
@@ -377,6 +379,7 @@ function mountInvestigationShell(): void {
         <button id="back-to-launcher" data-testid="back-to-launcher">← All chokepoints</button>
         <div id="watch-save" class="watch-save-slot"></div>
         <div id="agent" class="agent-slot"></div>
+        <div id="voice" class="voice-slot"></div>
         <div id="hud" class="hud"></div>
         <div id="event-cards" class="event-cards"></div>
       </aside>
@@ -400,6 +403,94 @@ function mountInvestigationShell(): void {
   renderAgentPanel(required("#agent"), (question) => {
     void handleAgentQuestion(question);
   });
+  mountVoicePanel();
+}
+
+// ------------------------------------------------------- voice (§8.6 keyless)
+
+/**
+ * Browser speech surfaces, narrowed to the session contract. Detection is
+ * honest: unsupported browsers render UNAVAILABLE (never a silent control).
+ * WebKit-prefixed constructors included — Chrome exposes webkitSpeechRecognition.
+ */
+function browserSpeech(): {
+  recognition: SpeechRecognitionLike | null;
+  synthesis: { speak(u: { text: string; onend?: () => void }): void; cancel(): void } | null;
+} {
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    speechSynthesis?: { speak(u: { text: string; onend?: () => void }): void; cancel(): void };
+  };
+  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+  return {
+    recognition: Ctor ? new Ctor() : null,
+    synthesis: w.speechSynthesis ?? null,
+  };
+}
+
+let voiceRecognition: SpeechRecognitionLike | null = null;
+
+function mountVoicePanel(): void {
+  const { recognition, synthesis } = browserSpeech();
+  const availability = detectVoiceAvailability(recognition, synthesis);
+  renderVoicePanel(required("#voice"), availability.available ? { available: true } : { available: false, reason: availability.reason }, {
+    onStartListening: () => {
+      if (!recognition) return;
+      voiceRecognition = recognition;
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript ?? "";
+        if (transcript.trim().length > 0) {
+          void handleVoiceQuestion(transcript);
+        }
+      };
+      recognition.onerror = () => setVoiceListening(required("#voice"), false);
+      recognition.onend = () => setVoiceListening(required("#voice"), false);
+      try {
+        recognition.start();
+        setVoiceListening(required("#voice"), true);
+      } catch {
+        setVoiceListening(required("#voice"), false);
+      }
+    },
+    onStopListening: () => {
+      voiceRecognition?.stop();
+      setVoiceListening(required("#voice"), false);
+    },
+  });
+  void synthesis;
+}
+
+async function handleVoiceQuestion(transcript: string): Promise<void> {
+  const snapshot = state.get();
+  const { synthesis } = browserSpeech();
+  const result = await runVoiceTurn(transcript, {
+    ask: async (question) => {
+      const { answer, verdict, uiAction } = await askAgent(question, manager, {
+        chokepointId: snapshot.chokepointId,
+        window: snapshot.timeWindow,
+      });
+      // §8.6: apply through app state; speak "applied" only on success.
+      const applied = uiAction ? applyAgentAction(uiAction) : false;
+      // The transcript renders in the shared agent answer surface.
+      renderAgentAnswer(required("#agent"), {
+        text: answer.text,
+        caveats: answer.caveats,
+        rejected: answer.rejected,
+        evidenceRefs: [],
+        verdict: verdict?.verdict ?? "rejected",
+      } satisfies AgentAnswerView);
+      return { answer: answer.text, verdict: verdict?.verdict ?? null, uiAction, uiActionApplied: applied };
+    },
+  });
+  void result; // spoken + rendered above; nothing persisted (§11.2)
+  if (synthesis) {
+    synthesis.cancel();
+    synthesis.speak({ text: speakableAnswer(result.answer) });
+  }
 }
 
 function openInvestigation(snapshot: AppStateSnapshot): void {

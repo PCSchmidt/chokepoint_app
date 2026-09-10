@@ -9,3 +9,4 @@ export * from "./timeline";
 export * from "./evidenceDrawer";
 export * from "./watchlist";
 export * from "./agentPanel";
+export * from "./voicePanel";

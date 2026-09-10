@@ -77,6 +77,7 @@ gitignored `.env`): `npm run smoke`.
 - `NON_CLAIMS.md` — what the product does not claim (user-facing)
 - `SECURITY.md` — secrets, proxy, and privacy rules
 - `STATUS.md` — measured progress log
+- `docs/case-study.md` — the product story with measured results
 - `docs/decisions/` — architecture decision records (ADRs)
 - `research/` — candidate-geometry and provider-terms research (pre-decision)
 

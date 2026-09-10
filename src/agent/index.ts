@@ -13,3 +13,4 @@ export * from "./evidenceBundle";
 export * from "./evaluator";
 export * from "./generator";
 export * from "./pipeline";
+export * from "./voiceSession";

@@ -620,3 +620,635 @@ details.agent-panel { border: 1px solid var(--border); border-radius: 6px; paddi
 .agent-caveat, .agent-rejected, .agent-refs { font-size: 0.68rem; color: var(--ink-dim); margin: 0.2rem 0; }
 .agent-rejected { color: #f59e0b; }
 .agent-verdict.agent-rejected { color: #f87171; border-color: #f87171; }
+/*
+ * Freight visual theme (CHOKEPOINT-PLAN.md §9.3).
+ * Dark slate/navy foundation; sea blue for maritime state; red RESERVED for
+ * degraded or threshold-exceeded conditions (never generic emphasis);
+ * restrained glass panels; badges always visible; attribution never hidden.
+ */
+
+:root {
+  --bg-foundation: #0a1522;
+  --bg-panel: rgba(15, 30, 48, 0.82);
+  --bg-panel-solid: #0f1e30;
+  --ink: #dbe7f4;
+  --ink-dim: #8aa2bd;
+  --sea: #38bdf8;
+  --sea-dim: #0e7490;
+  --amber: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --border: rgba(56, 189, 248, 0.25);
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", monospace;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-foundation);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-panel-solid);
+  border-bottom: 1px solid var(--border);
+}
+.app-title h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.06em; color: var(--sea); }
+.app-subtitle { font-size: 0.72rem; color: var(--ink-dim); margin-left: 0.5rem; }
+
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Badges — §9.3 vocabulary */
+.badge {
+  display: inline-block; font-size: 0.62rem; font-weight: 700;
+  padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.4rem;
+  letter-spacing: 0.08em; vertical-align: middle;
+}
+.badge-live { background: #052e16; color: var(--green, #4ade80); border: 1px solid #14532d; }
+.badge-derived { background: #082f49; color: var(--sea); border: 1px solid #075985; }
+.badge-estimate { background: #082f49; color: #7dd3fc; border: 1px solid #075985; }
+.badge-sim { background: #422006; color: #fbbf24; border: 1px solid #92400e; }
+.badge-stale { background: #3f2d04; color: #fcd34d; border: 1px solid #92400e; }
+.badge-unknown { background: #1f2937; color: #9ca3af; border: 1px solid #374151; }
+.badge-degraded { background: #450a0a; color: var(--red); border: 1px solid #7f1d1d; }
+
+/* Launcher — the working landing surface (§9.3) */
+.launcher { padding: 2rem; max-width: 60rem; margin: 0 auto; }
+.launcher h2 { color: var(--ink); font-weight: 500; }
+.launcher-card {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  margin-bottom: 0.8rem; padding: 1rem 1.2rem;
+  background: var(--bg-panel); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--font);
+}
+.launcher-card:hover { border-color: var(--sea); }
+.launcher-name { font-size: 1.05rem; font-weight: 600; }
+.launcher-meta { color: var(--ink-dim); font-size: 0.8rem; margin-top: 0.2rem; }
+.launcher-coverage { font-size: 0.78rem; margin-top: 0.5rem; }
+.coverage-covered { color: var(--sea); }
+.coverage-partial { color: #fcd34d; }
+.coverage-unknown { color: #9ca3af; }
+
+/* Investigation layout: left rail (cards), globe, right rail (evidence) */
+.investigation { display: grid; grid-template-columns: 20rem 1fr 22rem; height: 100%; }
+.left-rail, .right-rail {
+  background: var(--bg-panel); overflow-y: auto; padding: 0.8rem;
+  border-right: 1px solid var(--border);
+}
+.right-rail { border-right: none; border-left: 1px solid var(--border); }
+.globe-pane { position: relative; display: flex; flex-direction: column; }
+#globe { flex: 1; min-height: 0; }
+
+.hud { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.metric-card {
+  background: rgba(8, 22, 38, 0.7); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.5rem; margin-bottom: 0.5rem;
+}
+.metric-value { font-size: 1.3rem; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+.metric-label { font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.15rem; }
+.metric-note { font-size: 0.62rem; color: #fcd34d; margin-bottom: 0.2rem; }
+
+.event-cards { margin-top: 0.8rem; }
+.event-card {
+  border-left: 3px solid var(--sea); background: rgba(8, 22, 38, 0.7);
+  padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0;
+}
+.event-title { font-size: 0.85rem; }
+.event-note, .event-empty { font-size: 0.7rem; color: var(--ink-dim); margin-top: 0.25rem; }
+.event-comparison { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.4rem; }
+
+/* Timeline */
+.timeline {
+  display: flex; gap: 0.6rem; align-items: center; padding: 0.5rem 0.8rem;
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+  font-size: 0.72rem; color: var(--ink-dim);
+}
+.timeline input[type="range"] { flex: 1; }
+.tl-btn {
+  background: var(--sea); color: #04121f; border: none; font-weight: 700;
+  padding: 0.3rem 0.9rem; cursor: pointer; border-radius: 4px;
+}
+.timeline-cursor { font-family: var(--mono); color: var(--sea); }
+
+.share { padding: 0.3rem 0.8rem; background: var(--bg-panel-solid); }
+.share a { color: var(--sea); font-size: 0.75rem; text-decoration: none; }
+
+/* Evidence drawer (§4.5) */
+.evidence h3 { margin: 0.2rem 0 0.6rem; color: var(--ink); font-weight: 600; font-size: 0.95rem; }
+.evidence-section { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem; background: rgba(8, 22, 38, 0.6); }
+.evidence-section summary { cursor: pointer; padding: 0.45rem 0.6rem; font-size: 0.8rem; color: var(--sea); }
+.evidence-section ul { margin: 0; padding: 0.4rem 0.9rem 0.6rem 1.4rem; font-size: 0.72rem; line-height: 1.5; color: var(--ink); }
+
+/* Attribution — always visible (§9.3, §15) */
+.attribution-bar {
+  padding: 0.35rem 1rem; font-size: 0.68rem; color: var(--ink-dim);
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+}
+
+button { font-family: var(--font); }
+
+/* Responsive (§9.4): mobile prioritizes event cards + evidence, not the globe. */
+@media (max-width: 60rem) {
+  .investigation { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow-y: auto; }
+  .globe-pane { order: 3; min-height: 40vh; }
+  .left-rail, .right-rail { border: none; border-bottom: 1px solid var(--border); }
+}
+/*
+ * Freight visual theme (CHOKEPOINT-PLAN.md §9.3).
+ * Dark slate/navy foundation; sea blue for maritime state; red RESERVED for
+ * degraded or threshold-exceeded conditions (never generic emphasis);
+ * restrained glass panels; badges always visible; attribution never hidden.
+ */
+
+:root {
+  --bg-foundation: #0a1522;
+  --bg-panel: rgba(15, 30, 48, 0.82);
+  --bg-panel-solid: #0f1e30;
+  --ink: #dbe7f4;
+  --ink-dim: #8aa2bd;
+  --sea: #38bdf8;
+  --sea-dim: #0e7490;
+  --amber: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --border: rgba(56, 189, 248, 0.25);
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", monospace;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-foundation);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-panel-solid);
+  border-bottom: 1px solid var(--border);
+}
+.app-title h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.06em; color: var(--sea); }
+.app-subtitle { font-size: 0.72rem; color: var(--ink-dim); margin-left: 0.5rem; }
+
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Badges — §9.3 vocabulary */
+.badge {
+  display: inline-block; font-size: 0.62rem; font-weight: 700;
+  padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.4rem;
+  letter-spacing: 0.08em; vertical-align: middle;
+}
+.badge-live { background: #052e16; color: var(--green, #4ade80); border: 1px solid #14532d; }
+.badge-derived { background: #082f49; color: var(--sea); border: 1px solid #075985; }
+.badge-estimate { background: #082f49; color: #7dd3fc; border: 1px solid #075985; }
+.badge-sim { background: #422006; color: #fbbf24; border: 1px solid #92400e; }
+.badge-stale { background: #3f2d04; color: #fcd34d; border: 1px solid #92400e; }
+.badge-unknown { background: #1f2937; color: #9ca3af; border: 1px solid #374151; }
+.badge-degraded { background: #450a0a; color: var(--red); border: 1px solid #7f1d1d; }
+
+/* Launcher — the working landing surface (§9.3) */
+.launcher { padding: 2rem; max-width: 60rem; margin: 0 auto; }
+.launcher h2 { color: var(--ink); font-weight: 500; }
+.launcher-card {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  margin-bottom: 0.8rem; padding: 1rem 1.2rem;
+  background: var(--bg-panel); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--font);
+}
+.launcher-card:hover { border-color: var(--sea); }
+.launcher-name { font-size: 1.05rem; font-weight: 600; }
+.launcher-meta { color: var(--ink-dim); font-size: 0.8rem; margin-top: 0.2rem; }
+.launcher-coverage { font-size: 0.78rem; margin-top: 0.5rem; }
+.coverage-covered { color: var(--sea); }
+.coverage-partial { color: #fcd34d; }
+.coverage-unknown { color: #9ca3af; }
+
+/* Investigation layout: left rail (cards), globe, right rail (evidence) */
+.investigation { display: grid; grid-template-columns: 20rem 1fr 22rem; height: 100%; }
+.left-rail, .right-rail {
+  background: var(--bg-panel); overflow-y: auto; padding: 0.8rem;
+  border-right: 1px solid var(--border);
+}
+.right-rail { border-right: none; border-left: 1px solid var(--border); }
+.globe-pane { position: relative; display: flex; flex-direction: column; }
+#globe { flex: 1; min-height: 0; }
+
+.hud { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.metric-card {
+  background: rgba(8, 22, 38, 0.7); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.5rem; margin-bottom: 0.5rem;
+}
+.metric-value { font-size: 1.3rem; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+.metric-label { font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.15rem; }
+.metric-note { font-size: 0.62rem; color: #fcd34d; margin-bottom: 0.2rem; }
+
+.event-cards { margin-top: 0.8rem; }
+.event-card {
+  border-left: 3px solid var(--sea); background: rgba(8, 22, 38, 0.7);
+  padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0;
+}
+.event-title { font-size: 0.85rem; }
+.event-note, .event-empty { font-size: 0.7rem; color: var(--ink-dim); margin-top: 0.25rem; }
+.event-comparison { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.4rem; }
+
+/* Timeline */
+.timeline {
+  display: flex; gap: 0.6rem; align-items: center; padding: 0.5rem 0.8rem;
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+  font-size: 0.72rem; color: var(--ink-dim);
+}
+.timeline input[type="range"] { flex: 1; }
+.tl-btn {
+  background: var(--sea); color: #04121f; border: none; font-weight: 700;
+  padding: 0.3rem 0.9rem; cursor: pointer; border-radius: 4px;
+}
+.timeline-cursor { font-family: var(--mono); color: var(--sea); }
+
+.share { padding: 0.3rem 0.8rem; background: var(--bg-panel-solid); }
+.share a { color: var(--sea); font-size: 0.75rem; text-decoration: none; }
+
+/* Evidence drawer (§4.5) */
+.evidence h3 { margin: 0.2rem 0 0.6rem; color: var(--ink); font-weight: 600; font-size: 0.95rem; }
+.evidence-section { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem; background: rgba(8, 22, 38, 0.6); }
+.evidence-section summary { cursor: pointer; padding: 0.45rem 0.6rem; font-size: 0.8rem; color: var(--sea); }
+.evidence-section ul { margin: 0; padding: 0.4rem 0.9rem 0.6rem 1.4rem; font-size: 0.72rem; line-height: 1.5; color: var(--ink); }
+
+/* Attribution — always visible (§9.3, §15) */
+.attribution-bar {
+  padding: 0.35rem 1rem; font-size: 0.68rem; color: var(--ink-dim);
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+}
+
+button { font-family: var(--font); }
+
+/* Responsive (§9.4): mobile prioritizes event cards + evidence, not the globe. */
+@media (max-width: 60rem) {
+  .investigation { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow-y: auto; }
+  .globe-pane { order: 3; min-height: 40vh; }
+  .left-rail, .right-rail { border: none; border-bottom: 1px solid var(--border); }
+}
+
+/* Watchlist (Workflow E): local-first saved watches */
+.watchlist { margin-top: 1.2rem; }
+.watchlist h2 { font-size: 1rem; color: var(--ink); }
+.watch-empty { font-size: 0.75rem; color: var(--ink-dim); max-width: 34rem; }
+.watch-row-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 0.4rem 0.6rem;
+  align-items: center; padding: 0.45rem 0.6rem; margin-bottom: 0.4rem;
+  background: var(--bg-panel-solid); border: 1px solid var(--border); border-radius: 6px;
+}
+.watch-label { font-size: 0.78rem; color: var(--ink); }
+.watch-note { grid-column: 1 / -1; font-size: 0.7rem; color: var(--ink-dim); }
+.watch-status.watch-fired { background: #f59e0b22; color: #f59e0b; border-color: #f59e0b; }
+.watch-status.watch-clear { background: #22c55e22; color: #22c55e; border-color: #22c55e; }
+.watch-remove { font-size: 0.7rem; background: transparent; color: var(--ink-dim); border: 1px solid var(--border); cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 4px; }
+.watch-remove:hover { color: var(--ink); }
+.watch-save summary { cursor: pointer; font-size: 0.8rem; color: var(--sea); }
+.watch-save details, details.watch-save { border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.6rem; background: rgba(8, 22, 38, 0.6); }
+.watch-save summary { color: var(--sea); font-size: 0.8rem; }
+.watch-save-slot { padding: 0 0.4rem; }
+.watch-row { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.4rem; flex-wrap: wrap; }
+.watch-row select, .watch-row input { font-size: 0.72rem; background: #0b1e33; color: var(--ink); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.3rem; }
+.watch-row input[type="number"] { width: 4.2rem; }
+.watch-save button { background: var(--sea); color: #04121f; border: none; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.72rem; }
+.watch-save span { font-size: 0.72rem; color: var(--ink-dim); }
+/*
+ * Freight visual theme (CHOKEPOINT-PLAN.md §9.3).
+ * Dark slate/navy foundation; sea blue for maritime state; red RESERVED for
+ * degraded or threshold-exceeded conditions (never generic emphasis);
+ * restrained glass panels; badges always visible; attribution never hidden.
+ */
+
+:root {
+  --bg-foundation: #0a1522;
+  --bg-panel: rgba(15, 30, 48, 0.82);
+  --bg-panel-solid: #0f1e30;
+  --ink: #dbe7f4;
+  --ink-dim: #8aa2bd;
+  --sea: #38bdf8;
+  --sea-dim: #0e7490;
+  --amber: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --border: rgba(56, 189, 248, 0.25);
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", monospace;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-foundation);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-panel-solid);
+  border-bottom: 1px solid var(--border);
+}
+.app-title h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.06em; color: var(--sea); }
+.app-subtitle { font-size: 0.72rem; color: var(--ink-dim); margin-left: 0.5rem; }
+
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Badges — §9.3 vocabulary */
+.badge {
+  display: inline-block; font-size: 0.62rem; font-weight: 700;
+  padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.4rem;
+  letter-spacing: 0.08em; vertical-align: middle;
+}
+.badge-live { background: #052e16; color: var(--green, #4ade80); border: 1px solid #14532d; }
+.badge-derived { background: #082f49; color: var(--sea); border: 1px solid #075985; }
+.badge-estimate { background: #082f49; color: #7dd3fc; border: 1px solid #075985; }
+.badge-sim { background: #422006; color: #fbbf24; border: 1px solid #92400e; }
+.badge-stale { background: #3f2d04; color: #fcd34d; border: 1px solid #92400e; }
+.badge-unknown { background: #1f2937; color: #9ca3af; border: 1px solid #374151; }
+.badge-degraded { background: #450a0a; color: var(--red); border: 1px solid #7f1d1d; }
+
+/* Launcher — the working landing surface (§9.3) */
+.launcher { padding: 2rem; max-width: 60rem; margin: 0 auto; }
+.launcher h2 { color: var(--ink); font-weight: 500; }
+.launcher-card {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  margin-bottom: 0.8rem; padding: 1rem 1.2rem;
+  background: var(--bg-panel); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--font);
+}
+.launcher-card:hover { border-color: var(--sea); }
+.launcher-name { font-size: 1.05rem; font-weight: 600; }
+.launcher-meta { color: var(--ink-dim); font-size: 0.8rem; margin-top: 0.2rem; }
+.launcher-coverage { font-size: 0.78rem; margin-top: 0.5rem; }
+.coverage-covered { color: var(--sea); }
+.coverage-partial { color: #fcd34d; }
+.coverage-unknown { color: #9ca3af; }
+
+/* Investigation layout: left rail (cards), globe, right rail (evidence) */
+.investigation { display: grid; grid-template-columns: 20rem 1fr 22rem; height: 100%; }
+.left-rail, .right-rail {
+  background: var(--bg-panel); overflow-y: auto; padding: 0.8rem;
+  border-right: 1px solid var(--border);
+}
+.right-rail { border-right: none; border-left: 1px solid var(--border); }
+.globe-pane { position: relative; display: flex; flex-direction: column; }
+#globe { flex: 1; min-height: 0; }
+
+.hud { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.metric-card {
+  background: rgba(8, 22, 38, 0.7); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.5rem; margin-bottom: 0.5rem;
+}
+.metric-value { font-size: 1.3rem; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+.metric-label { font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.15rem; }
+.metric-note { font-size: 0.62rem; color: #fcd34d; margin-bottom: 0.2rem; }
+
+.event-cards { margin-top: 0.8rem; }
+.event-card {
+  border-left: 3px solid var(--sea); background: rgba(8, 22, 38, 0.7);
+  padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0;
+}
+.event-title { font-size: 0.85rem; }
+.event-note, .event-empty { font-size: 0.7rem; color: var(--ink-dim); margin-top: 0.25rem; }
+.event-comparison { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.4rem; }
+
+/* Timeline */
+.timeline {
+  display: flex; gap: 0.6rem; align-items: center; padding: 0.5rem 0.8rem;
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+  font-size: 0.72rem; color: var(--ink-dim);
+}
+.timeline input[type="range"] { flex: 1; }
+.tl-btn {
+  background: var(--sea); color: #04121f; border: none; font-weight: 700;
+  padding: 0.3rem 0.9rem; cursor: pointer; border-radius: 4px;
+}
+.timeline-cursor { font-family: var(--mono); color: var(--sea); }
+
+.share { padding: 0.3rem 0.8rem; background: var(--bg-panel-solid); }
+.share a { color: var(--sea); font-size: 0.75rem; text-decoration: none; }
+
+/* Evidence drawer (§4.5) */
+.evidence h3 { margin: 0.2rem 0 0.6rem; color: var(--ink); font-weight: 600; font-size: 0.95rem; }
+.evidence-section { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem; background: rgba(8, 22, 38, 0.6); }
+.evidence-section summary { cursor: pointer; padding: 0.45rem 0.6rem; font-size: 0.8rem; color: var(--sea); }
+.evidence-section ul { margin: 0; padding: 0.4rem 0.9rem 0.6rem 1.4rem; font-size: 0.72rem; line-height: 1.5; color: var(--ink); }
+
+/* Attribution — always visible (§9.3, §15) */
+.attribution-bar {
+  padding: 0.35rem 1rem; font-size: 0.68rem; color: var(--ink-dim);
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+}
+
+button { font-family: var(--font); }
+
+/* Responsive (§9.4): mobile prioritizes event cards + evidence, not the globe. */
+@media (max-width: 60rem) {
+  .investigation { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow-y: auto; }
+  .globe-pane { order: 3; min-height: 40vh; }
+  .left-rail, .right-rail { border: none; border-bottom: 1px solid var(--border); }
+}
+/*
+ * Freight visual theme (CHOKEPOINT-PLAN.md §9.3).
+ * Dark slate/navy foundation; sea blue for maritime state; red RESERVED for
+ * degraded or threshold-exceeded conditions (never generic emphasis);
+ * restrained glass panels; badges always visible; attribution never hidden.
+ */
+
+:root {
+  --bg-foundation: #0a1522;
+  --bg-panel: rgba(15, 30, 48, 0.82);
+  --bg-panel-solid: #0f1e30;
+  --ink: #dbe7f4;
+  --ink-dim: #8aa2bd;
+  --sea: #38bdf8;
+  --sea-dim: #0e7490;
+  --amber: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --border: rgba(56, 189, 248, 0.25);
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Consolas", monospace;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-foundation);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: var(--bg-panel-solid);
+  border-bottom: 1px solid var(--border);
+}
+.app-title h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.06em; color: var(--sea); }
+.app-subtitle { font-size: 0.72rem; color: var(--ink-dim); margin-left: 0.5rem; }
+
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Badges — §9.3 vocabulary */
+.badge {
+  display: inline-block; font-size: 0.62rem; font-weight: 700;
+  padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.4rem;
+  letter-spacing: 0.08em; vertical-align: middle;
+}
+.badge-live { background: #052e16; color: var(--green, #4ade80); border: 1px solid #14532d; }
+.badge-derived { background: #082f49; color: var(--sea); border: 1px solid #075985; }
+.badge-estimate { background: #082f49; color: #7dd3fc; border: 1px solid #075985; }
+.badge-sim { background: #422006; color: #fbbf24; border: 1px solid #92400e; }
+.badge-stale { background: #3f2d04; color: #fcd34d; border: 1px solid #92400e; }
+.badge-unknown { background: #1f2937; color: #9ca3af; border: 1px solid #374151; }
+.badge-degraded { background: #450a0a; color: var(--red); border: 1px solid #7f1d1d; }
+
+/* Launcher — the working landing surface (§9.3) */
+.launcher { padding: 2rem; max-width: 60rem; margin: 0 auto; }
+.launcher h2 { color: var(--ink); font-weight: 500; }
+.launcher-card {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  margin-bottom: 0.8rem; padding: 1rem 1.2rem;
+  background: var(--bg-panel); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--font);
+}
+.launcher-card:hover { border-color: var(--sea); }
+.launcher-name { font-size: 1.05rem; font-weight: 600; }
+.launcher-meta { color: var(--ink-dim); font-size: 0.8rem; margin-top: 0.2rem; }
+.launcher-coverage { font-size: 0.78rem; margin-top: 0.5rem; }
+.coverage-covered { color: var(--sea); }
+.coverage-partial { color: #fcd34d; }
+.coverage-unknown { color: #9ca3af; }
+
+/* Investigation layout: left rail (cards), globe, right rail (evidence) */
+.investigation { display: grid; grid-template-columns: 20rem 1fr 22rem; height: 100%; }
+.left-rail, .right-rail {
+  background: var(--bg-panel); overflow-y: auto; padding: 0.8rem;
+  border-right: 1px solid var(--border);
+}
+.right-rail { border-right: none; border-left: 1px solid var(--border); }
+.globe-pane { position: relative; display: flex; flex-direction: column; }
+#globe { flex: 1; min-height: 0; }
+
+.hud { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.metric-card {
+  background: rgba(8, 22, 38, 0.7); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.5rem; margin-bottom: 0.5rem;
+}
+.metric-value { font-size: 1.3rem; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+.metric-label { font-size: 0.68rem; color: var(--ink-dim); margin-top: 0.15rem; }
+.metric-note { font-size: 0.62rem; color: #fcd34d; margin-bottom: 0.2rem; }
+
+.event-cards { margin-top: 0.8rem; }
+.event-card {
+  border-left: 3px solid var(--sea); background: rgba(8, 22, 38, 0.7);
+  padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 0 4px 4px 0;
+}
+.event-title { font-size: 0.85rem; }
+.event-note, .event-empty { font-size: 0.7rem; color: var(--ink-dim); margin-top: 0.25rem; }
+.event-comparison { font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.4rem; }
+
+/* Timeline */
+.timeline {
+  display: flex; gap: 0.6rem; align-items: center; padding: 0.5rem 0.8rem;
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+  font-size: 0.72rem; color: var(--ink-dim);
+}
+.timeline input[type="range"] { flex: 1; }
+.tl-btn {
+  background: var(--sea); color: #04121f; border: none; font-weight: 700;
+  padding: 0.3rem 0.9rem; cursor: pointer; border-radius: 4px;
+}
+.timeline-cursor { font-family: var(--mono); color: var(--sea); }
+
+.share { padding: 0.3rem 0.8rem; background: var(--bg-panel-solid); }
+.share a { color: var(--sea); font-size: 0.75rem; text-decoration: none; }
+
+/* Evidence drawer (§4.5) */
+.evidence h3 { margin: 0.2rem 0 0.6rem; color: var(--ink); font-weight: 600; font-size: 0.95rem; }
+.evidence-section { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.5rem; background: rgba(8, 22, 38, 0.6); }
+.evidence-section summary { cursor: pointer; padding: 0.45rem 0.6rem; font-size: 0.8rem; color: var(--sea); }
+.evidence-section ul { margin: 0; padding: 0.4rem 0.9rem 0.6rem 1.4rem; font-size: 0.72rem; line-height: 1.5; color: var(--ink); }
+
+/* Attribution — always visible (§9.3, §15) */
+.attribution-bar {
+  padding: 0.35rem 1rem; font-size: 0.68rem; color: var(--ink-dim);
+  background: var(--bg-panel-solid); border-top: 1px solid var(--border);
+}
+
+button { font-family: var(--font); }
+
+/* Responsive (§9.4): mobile prioritizes event cards + evidence, not the globe. */
+@media (max-width: 60rem) {
+  .investigation { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow-y: auto; }
+  .globe-pane { order: 3; min-height: 40vh; }
+  .left-rail, .right-rail { border: none; border-bottom: 1px solid var(--border); }
+}
+
+/* Watchlist (Workflow E): local-first saved watches */
+.watchlist { margin-top: 1.2rem; }
+.watchlist h2 { font-size: 1rem; color: var(--ink); }
+.watch-empty { font-size: 0.75rem; color: var(--ink-dim); max-width: 34rem; }
+.watch-row-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 0.4rem 0.6rem;
+  align-items: center; padding: 0.45rem 0.6rem; margin-bottom: 0.4rem;
+  background: var(--bg-panel-solid); border: 1px solid var(--border); border-radius: 6px;
+}
+.watch-label { font-size: 0.78rem; color: var(--ink); }
+.watch-note { grid-column: 1 / -1; font-size: 0.7rem; color: var(--ink-dim); }
+.watch-status.watch-fired { background: #f59e0b22; color: #f59e0b; border-color: #f59e0b; }
+.watch-status.watch-clear { background: #22c55e22; color: #22c55e; border-color: #22c55e; }
+.watch-remove { font-size: 0.7rem; background: transparent; color: var(--ink-dim); border: 1px solid var(--border); cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 4px; }
+.watch-remove:hover { color: var(--ink); }
+.watch-save summary { cursor: pointer; font-size: 0.8rem; color: var(--sea); }
+.watch-save details, details.watch-save { border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.6rem; background: rgba(8, 22, 38, 0.6); }
+.watch-save summary { color: var(--sea); font-size: 0.8rem; }
+.watch-save-slot { padding: 0 0.4rem; }
+.watch-row { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.4rem; flex-wrap: wrap; }
+.watch-row select, .watch-row input { font-size: 0.72rem; background: #0b1e33; color: var(--ink); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.3rem; }
+.watch-row input[type="number"] { width: 4.2rem; }
+.watch-save button { background: var(--sea); color: #04121f; border: none; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.72rem; }
+.watch-save span { font-size: 0.72rem; color: var(--ink-dim); }
+
+/* Agent text query surface (§4.4) */
+.agent-slot { padding: 0 0.4rem; }
+details.agent-panel { border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.6rem; background: rgba(8, 22, 38, 0.6); margin-bottom: 0.5rem; }
+.agent-panel summary { cursor: pointer; color: var(--sea); font-size: 0.8rem; }
+.agent-row { display: flex; gap: 0.4rem; margin-top: 0.45rem; }
+.agent-row input { flex: 1; font-size: 0.75rem; background: #0b1e33; color: var(--ink); border: 1px solid var(--border); border-radius: 4px; padding: 0.25rem 0.4rem; }
+.agent-panel button { background: var(--sea); color: #04121f; border: none; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.72rem; }
+.agent-text { font-size: 0.76rem; color: var(--ink); margin: 0.5rem 0 0.3rem; line-height: 1.5; }
+.agent-caveat, .agent-rejected, .agent-refs { font-size: 0.68rem; color: var(--ink-dim); margin: 0.2rem 0; }
+.agent-rejected { color: #f59e0b; }
+.agent-verdict.agent-rejected { color: #f87171; border-color: #f87171; }
+
+/* Voice panel (§4.4, §8.6) */
+.voice-slot { padding: 0 0.4rem; }
+details.voice-panel { border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.6rem; background: rgba(8, 22, 38, 0.6); margin-bottom: 0.5rem; }
+.voice-panel summary { cursor: pointer; color: var(--sea); font-size: 0.8rem; }
+.voice-mic { background: var(--sea); color: #04121f; border: none; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.72rem; margin-top: 0.45rem; }
+.voice-mic[data-state="listening"] { background: #f59e0b; }
+.voice-status { font-size: 0.7rem; color: var(--ink-dim); margin-left: 0.5rem; }
+.voice-note, .voice-unavailable { font-size: 0.68rem; color: var(--ink-dim); margin: 0.4rem 0 0; }
+.voice-unavailable { color: #f59e0b; }

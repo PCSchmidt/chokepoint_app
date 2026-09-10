@@ -147,6 +147,20 @@ completion claims. Claims here must match the repository.
 - **Clean-machine setup (README)**: Docker one-command stack, bare-Node
   serve, and the full dev command list. Documentation matches runtime
   behavior (commands verified on this machine).
+- **Product README + case study (§17 Phase 5)**: `docs/case-study.md` — the
+  product story told only through measured artifacts (test counts, evaluation
+  reports, perf budgets, live smoke evidence, ops verification), with an
+  explicit "what it does not do" section (§14.4 language discipline).
+- **Voice session, local keyless path (§4.4, §8.6, Decision 2 satisfied)**:
+  `src/agent/voiceSession.ts` — browser Web Speech API (recognition ->
+  synthesis) over the SAME evaluator-gated pipeline. No cloud, no key; OpenAI
+  Realtime remains the documented hosted-phase option. §8.6 rules enforced:
+  UI-action outcomes are spoken as applied ONLY after the caller applies them
+  through app state (applied/refused distinguished); pipeline failures speak
+  "failed; no answer was generated" (never fabricated); rejected intents
+  speak the refusal. Transcripts live in memory for one turn and are NEVER
+  persisted (§11.2). UI renders an honest UNAVAILABLE state when the browser
+  lacks speech APIs. 8 tests (fake speech surfaces, no browser APIs in CI).
 - Phase 5 exit criteria: reproducible build/test path (npm + Docker) MET;
   no credentials or prohibited data in repository (security review) MET;
   metrics scrape successfully MET; local install works in fixture mode MET
