@@ -7,3 +7,4 @@ export * from "./missionLauncher";
 export * from "./freightHud";
 export * from "./timeline";
 export * from "./evidenceDrawer";
+export * from "./watchlist";

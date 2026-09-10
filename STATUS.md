@@ -3,7 +3,44 @@
 This file records measured progress and known limitations, not optimistic
 completion claims. Claims here must match the repository.
 
-**Phase 0–2 complete. Phase 3 (Cesium product surface) IN PROGRESS: keyless globe + full investigation UI built and tested in fixture mode.**
+**Phase 0–3 complete: keyless globe, full investigation UI, watchlist, measured
+replay performance, and PWA offline shell — all fixture-mode, 233 tests.**
+
+## Phase 3 CLOSE-OUT (2026-09-10): watchlist, measured budgets, PWA
+
+- **Watchlist (Workflow E)**: `src/app/watchlist.ts` + `src/ui/watchlist.ts`.
+  A saved watch records chokepoint, geofence ids, metric, direction, relative
+  threshold, and freshness policy (Workflow E step 2), persists to
+  localStorage (§11.1; corrupt entries skipped, never crash), and evaluates
+  DETERMINISTICALLY against the replay dataset (step 4) — no scheduled jobs,
+  no external notifications (§11.3). Unknown comparisons and null metrics
+  NEVER fire; `require-fresh` refuses stale/degraded baselines. Language is
+  threshold-crossing only (§14.4). Save form lives in the investigation left
+  rail; the watch panel (FIRED/CLEAR/UNKNOWN/UNAVAILABLE badges) on the
+  launcher. 11 tests.
+- **Replay performance profile (`npm run perf:replay`, §12.5 budgets v1)**:
+  measures REAL Cesium render cost (preRender/postRender deltas — the app runs
+  requestRenderMode, so rAF rate is not a render measure), in-page scrub
+  latency, idle renders after settle, and heap growth over 5 globe
+  mount/unmount cycles. Artifacts: `research/perf/`. PASSING baselines:
+  replay render mean ~1.7ms / p95 ~2.9ms / max ~4.9ms (budgets 33/250ms);
+  scrub mean ~130ms / max ~176ms (budget 250ms); idle renders 0 (budget 1);
+  heap growth 0.0% (budget 50%). The profiler CAUGHT A REAL BUG: scrub and
+  replay cursor changes never updated the globe (the state subscriber only
+  re-rendered on chokepoint change). Fixed — cursor changes now refresh the
+  data views and scene via `refreshInvestigation`; the camera never moves on
+  ticks.
+- **PWA (§16.4, Decision 5)**: `public/manifest.webmanifest` (standalone,
+  theme #0b1626), icons 192/512 (generated inline, no new deps, maskable
+  variant included), `public/sw.js` offline shell — precached app shell,
+  bounded (200-entry) runtime cache for same-origin GETs, cross-origin NEVER
+  cached (map imagery stays network-bound; attribution stays honest),
+  network-first navigation. SW registers in production builds only, and is
+  failure-tolerant. Verified on the production build: SW active, and the
+  launcher renders with the network offline (CDP offline emulation). 9 tests.
+- Phase 3 exit criteria now all met: core investigation without voice;
+  deterministic replay; browser performance measured within documented
+  budgets; attribution visible in all views.
 
 ## Actually built (Phase 0/1)
 

@@ -5,17 +5,18 @@
   "type": "module",
   "description": "Provenance-aware transportation intelligence for global chokepoints (fixture-mode Phase 0/1)",
   "scripts": {
-    "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "tsc --noEmit",
-    "eval": "tsx scripts/run-evaluation.ts",
-    "smoke": "tsx scripts/aisstream-smoke.ts",
     "debug": "tsx scripts/aisstream-debug.ts",
-    "qa:browser": "tsx scripts/qa-browser.ts",
+    "dev": "vite",
+    "eval": "tsx scripts/run-evaluation.ts",
+    "lint": "tsc --noEmit",
+    "perf:replay": "tsx scripts/perf-replay.ts",
+    "prebuild": "node scripts/sync-cesium.mjs",
     "predev": "node scripts/sync-cesium.mjs",
-    "prebuild": "node scripts/sync-cesium.mjs"
+    "qa:browser": "tsx scripts/qa-browser.ts",
+    "smoke": "tsx scripts/aisstream-smoke.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",

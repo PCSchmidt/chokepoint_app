@@ -13,6 +13,17 @@
 // this, the viewer cannot load its workers/imagery and render fails.
 window.CESIUM_BASE_URL = "/cesium/";
 
+// PWA: register the offline shell service worker (production builds only;
+// dev needs uncached source). Registration is failure-tolerant: the app is
+// fully usable without it.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Offline shell unavailable — the app still works online.
+    });
+  });
+}
+
 import * as Cesium from "cesium";
 import "./styles.css";
 import { startup } from "./app/startup";
@@ -22,6 +33,16 @@ import { renderMissionLauncher, launcherCards } from "./ui/missionLauncher";
 import { renderFreightHud } from "./ui/freightHud";
 import { renderEventCards } from "./overlays/eventCards";
 import { renderEvidenceDrawer } from "./ui/evidenceDrawer";
+import { renderWatchlistSaveForm, renderWatchlistPanel, type WatchlistSaveSelection } from "./ui/watchlist";
+import {
+  loadWatchlist,
+  saveWatchlist,
+  upsertWatchEntry,
+  removeWatchEntry,
+  evaluateWatchlist,
+  watchEntryId,
+  type WatchlistEntry,
+} from "./app/watchlist";
 import { TimelineController, replayWindow } from "./ui/timeline";
 import type { ChokepointSnapshot } from "./data/manager";
 import type { AppStateSnapshot } from "./app/appState";
@@ -36,6 +57,8 @@ let globe: FreightGlobe | null = null;
 let shownChokepointId: string | null = null;
 let timeline: TimelineController | null = null;
 let replayTick: number | null = null;
+// Watchlist (Workflow E): local-first persistence; evaluated from data only.
+let watchEntries: WatchlistEntry[] = loadWatchlist(window.localStorage);
 
 // --- diagnostic helpers (QA only) ---
 function viewer_clock(g: NonNullable<FreightGlobe>): import("cesium").JulianDate {
@@ -92,6 +115,69 @@ function samplePixel(gl: WebGLRenderingContext | null, canvas: HTMLCanvasElement
     }
     return { total: pointEntities.length, colorHits, sample };
   },
+  /**
+   * Render-cost instrumentation (§12.5 replay frame budget): preRender ->
+   * postRender wall deltas, counted by the perf script. Contains no secrets.
+   */
+  startRenderStats: () => {
+    if (!globe) return false;
+    const scene = globe.viewer.scene;
+    const stats = { pre: 0, samples: [] as number[], lastRenderAt: 0 };
+    const removePre = scene.preRender.addEventListener(() => {
+      stats.pre = performance.now();
+    });
+    const removePost = scene.postRender.addEventListener(() => {
+      if (stats.pre > 0) stats.samples.push(performance.now() - stats.pre);
+      stats.pre = 0;
+      stats.lastRenderAt = performance.now();
+    });
+    (window as unknown as { __chokepointRenderStats?: typeof stats }).__chokepointRenderStats = stats;
+    (window as unknown as { __chokepointRenderCleanup?: (() => void)[] }).__chokepointRenderCleanup = [removePre, removePost];
+    return true;
+  },
+  getRenderStats: () => {
+    const stats = (window as unknown as { __chokepointRenderStats?: { samples: number[] } }).__chokepointRenderStats;
+    if (!stats) return null;
+    const s = [...stats.samples].sort((a, b) => a - b);
+    const n = s.length;
+    return {
+      renderCount: n,
+      meanMs: n ? s.reduce((a, b) => a + b, 0) / n : 0,
+      maxMs: n ? s[n - 1]! : 0,
+      p95Ms: n ? s[Math.min(n - 1, Math.floor(n * 0.95))]! : 0,
+    };
+  },
+  /**
+   * Scrub latency measurement (§12.5 timeline scrubbing): dispatch a seek,
+   * poll the render stats on the page's own event loop, resolve with the
+   * dispatch -> completed-render latency in ms (-1 when instrumentation is
+   * missing). Lives here because a page.evaluate callback cannot rely on
+   * Node-side transform helpers.
+   */
+  measureScrubLatency: (index: number, n: number) => {
+    return new Promise<number>((resolve) => {
+      const input = document.querySelector<HTMLInputElement>("[data-testid=seek]");
+      const stats = (window as unknown as { __chokepointRenderStats?: { samples: number[] } }).__chokepointRenderStats;
+      if (!input || !stats) return resolve(-1);
+      const min = Number(input.min);
+      const max = Number(input.max);
+      const target = min + ((max - min) * (index + 1)) / (n + 1);
+      const before = stats.samples.length;
+      const t0 = performance.now();
+      input.value = String(target);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      const check = (): void => {
+        if (stats.samples.length > before) return resolve(performance.now() - t0);
+        if (performance.now() - t0 > 2000) return resolve(2000); // timeout = miss
+        window.setTimeout(check, 5);
+      };
+      window.setTimeout(check, 5);
+    });
+  },
+  getHeap: () => {
+    const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
+    return mem ? mem.usedJSHeapSize : null;
+  },
   getCamera: () => {
     if (!globe) return null;
     const carto = globe.viewer.camera.positionCartographic;
@@ -143,6 +229,38 @@ function reviewedRings(chokepointId: string): Array<{ id: string; ring: PolygonR
     .filter((r): r is { id: string; ring: PolygonRing } => r !== null);
 }
 
+function persistWatchlist(): void {
+  saveWatchlist(watchEntries, window.localStorage);
+}
+
+function addWatch(selection: WatchlistSaveSelection): void {
+  const chokepointId = state.get().chokepointId;
+  if (!chokepointId) return;
+  const profile = manager.listChokepoints().find((c) => c.id === chokepointId);
+  if (!profile) return;
+  const entry: WatchlistEntry = {
+    id: watchEntryId({
+      chokepointId,
+      fenceIds: profile.geofences.map((g) => g.id),
+      metricId: selection.metricId,
+      direction: selection.direction,
+      relativePctThreshold: selection.relativePctThreshold,
+      freshnessPolicy: selection.freshnessPolicy,
+      configVersion: profile.configVersion,
+    }),
+    chokepointId,
+    fenceIds: profile.geofences.map((g) => g.id),
+    metricId: selection.metricId,
+    direction: selection.direction,
+    relativePctThreshold: selection.relativePctThreshold,
+    freshnessPolicy: selection.freshnessPolicy,
+    createdAt: new Date().toISOString(),
+    configVersion: profile.configVersion,
+  };
+  watchEntries = upsertWatchEntry(watchEntries, entry);
+  persistWatchlist();
+}
+
 // ------------------------------------------------------------- launcher view
 
 function renderLauncher(): void {
@@ -155,6 +273,19 @@ function renderLauncher(): void {
   viewRoot.innerHTML = `<div id="launcher" class="launcher"></div>`;
   const launcherEl = viewRoot.querySelector<HTMLDivElement>("#launcher")!;
   const cards = launcherCards(manager.listChokepoints(), (fenceId) => manager.coverageHint(fenceId));
+  // Watchlist (Workflow E): saved watches evaluated against the fixture replay.
+  const watchEl = document.createElement("div");
+  watchEl.id = "watchlist";
+  watchEl.className = "watchlist";
+  launcherEl.appendChild(watchEl);
+  const evaluations = evaluateWatchlist(watchEntries, (id) =>
+    manager.listChokepoints().some((c) => c.id === id) ? manager.getSnapshot(id, manager.defaultWindow()) : null,
+  );
+  renderWatchlistPanel(watchEl, watchEntries, evaluations, (id) => {
+    watchEntries = removeWatchEntry(watchEntries, id);
+    persistWatchlist();
+    renderLauncher();
+  });
   renderMissionLauncher(launcherEl, cards, (chokepointId) => {
     state.update({
       chokepointId,
@@ -171,6 +302,7 @@ function mountInvestigationShell(): void {
     <div class="investigation">
       <aside class="left-rail">
         <button id="back-to-launcher" data-testid="back-to-launcher">← All chokepoints</button>
+        <div id="watch-save" class="watch-save-slot"></div>
         <div id="hud" class="hud"></div>
         <div id="event-cards" class="event-cards"></div>
       </aside>
@@ -188,6 +320,9 @@ function mountInvestigationShell(): void {
   required("#back-to-launcher").addEventListener("click", () => {
     state.update({ chokepointId: null, timeWindow: null });
   });
+  // The save form depends only on the profile — render once at mount so the
+  // details element keeps its open/closed state across replay ticks.
+  renderWatchlistSaveForm(required("#watch-save"), manager.listChokepoints().find((c) => c.id === state.get().chokepointId)?.name ?? "chokepoint", addWatch);
 }
 
 function openInvestigation(snapshot: AppStateSnapshot): void {
@@ -210,16 +345,27 @@ function openInvestigation(snapshot: AppStateSnapshot): void {
   if (primary.geometry.kind === "polygon") {
     g.frameRing(primary.geometry.ring);
   }
+  shownChokepointId = chokepointId;
+  refreshInvestigation(snapshot);
+}
+
+/**
+ * Data-driven re-render of the investigation view (cursor/selection/window
+ * changes). Camera and fences are NOT re-framed here: replay ticks must not
+ * move the camera, and the render governor bounds what gets painted.
+ */
+function refreshInvestigation(snapshot: AppStateSnapshot): void {
+  if (view !== "investigation" || !globe) return;
+  const chokepointId = snapshot.chokepointId!;
   const windowToUse = snapshot.replay.cursor ? replayWindow(snapshot.replay.cursor) : snapshot.timeWindow!;
   const snap = manager.getSnapshot(chokepointId, windowToUse);
-  g.showObservations(snap.observations, snapshot.selectedEntityId);
+  globe.showObservations(snap.observations, snapshot.selectedEntityId);
   renderFreightHud(required("#hud"), snap);
   renderEventCards(required("#event-cards"), snap.events, snap.comparisons.vesselCount);
   renderEvidenceDrawer(required("#evidence"), snap);
   renderTimelineControls(snap);
   renderShareLink();
   attributionText.textContent = snap.attribution.attributionText;
-  shownChokepointId = chokepointId;
 }
 
 // ------------------------------------------------------------------ timeline
@@ -239,8 +385,11 @@ function renderTimelineControls(snap: ChokepointSnapshot): void {
     renderTimelineControls(snap);
   });
   el.querySelector<HTMLInputElement>("input")!.addEventListener("input", (e) => {
-    timeline!.seek(new Date(Number((e.target as HTMLInputElement).value)).toISOString());
-    renderTimelineControls(snap);
+    const cursor = new Date(Number((e.target as HTMLInputElement).value)).toISOString();
+    timeline!.seek(cursor);
+    // The cursor is app state: the subscriber re-renders the data views and
+    // the scene follows the scrub (§12.5 timeline scrubbing).
+    state.update({ replay: { cursor } });
   });
 }
 
@@ -286,6 +435,10 @@ state.subscribe((snapshot) => {
   timeline.seek(snapshot.replay.cursor ?? snapshot.timeWindow.endAt);
   if (snapshot.chokepointId !== shownChokepointId) {
     openInvestigation(snapshot);
+  } else if (view === "investigation") {
+    // Cursor, selection, and overlay changes drive the data views (§12.5:
+    // scrubbing and replay update the scene; the camera stays put).
+    refreshInvestigation(snapshot);
   }
   ensureReplayLoop();
 });

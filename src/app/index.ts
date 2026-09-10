@@ -6,3 +6,4 @@
 export * from "./appState";
 export * from "./shareState";
 export * from "./startup";
+export * from "./watchlist";
