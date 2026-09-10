@@ -106,7 +106,14 @@ export function evaluateClaim(claim: AgentClaim, metricValues: ReadonlyMap<strin
       reason: "No provenance reference — every claim must cite evidence (§8.3).",
     };
   }
-  const numbers = claim.text.match(/\d+(?:\.\d+)?/g) ?? [];
+  // Numeric accuracy applies to MEASUREMENT numbers. Numbers inside
+  // timestamps (ISO stamps, verbatim provider lane-update labels like
+  // "At 8:00 am MDT") are provenance strings, not claims — strip them before
+  // the check (§8.3 numeric accuracy; ADR-0013 facility claims).
+  const withoutTimestamps = claim.text
+    .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, " ")
+    .replace(/\b\d{1,2}:\d{2}\b/g, " ");
+  const numbers = withoutTimestamps.match(/\d+(?:\.\d+)?/g) ?? [];
   for (const n of numbers) {
     if (!numberSupported(claim, metricValues, n)) {
       return {

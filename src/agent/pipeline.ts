@@ -102,6 +102,14 @@ export async function askAgentWithContext(
     dwell_median_seconds: snapshot.metrics.dwellMedianSeconds.value,
     entry_count: snapshot.metrics.entryCount.value,
     exit_count: snapshot.metrics.exitCount.value,
+    // Facility readings (ADR-0015): commercial wait minutes per facility join
+    // the numeric-accuracy map so facility claims are evaluator-checked too.
+    ...Object.fromEntries(
+      snapshot.facilityMetrics.flatMap((f) => {
+        const wait = f.measurements.find((x) => x.laneGroup === "commercial_vehicle" && x.metric === "wait_minutes");
+        return wait && wait.value !== null ? [[f.metricId, wait.value] as const] : [];
+      }),
+    ),
   });
   const verdict = evaluateToolResult(bundle.tool, metricValues, bundle.sourceHealth);
   const answer = answerQuestion(bundle, verdict);

@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-10T12:45:00.519Z",
+  "generatedAt": "2026-09-10T14:14:30.632Z",
   "suite": "agent-groundedness-v1",
   "evaluatorVersion": "claim-evaluator-v1",
-  "total": 19,
-  "passed": 19,
+  "total": 25,
+  "passed": 25,
   "failed": 0,
   "results": [
     {
@@ -137,6 +137,48 @@
       "question": "47 classified freight vessels were observed.",
       "expected": "/does not match any metric/",
       "actual": "Number 47 does not match any metric in the evidence bundle (§8.3 numeric accuracy).",
+      "pass": true
+    },
+    {
+      "scenario": "border wait answered from OBSERVED facility metrics",
+      "question": "what's the wait at El Paso",
+      "expected": "/observed; reported by CBP/",
+      "actual": "The commercial-vehicle wait at El Paso - Bridge of the Americas (BOTA) was 3 minutes as of 2026-09-10T07:36:42Z (observed; reported by CBP, lane update At 8:00 am MDT). The commercial-vehicle wait at El Paso - Ysleta was 30 minutes as of 2026-09-10T07:36:42Z (observed; reported by CBP, lane update At 7:00 am MDT).",
+      "pass": true
+    },
+    {
+      "scenario": "facility answer carries the real sample value",
+      "question": "what's the wait at El Paso",
+      "expected": "/3 minutes/",
+      "actual": "The commercial-vehicle wait at El Paso - Bridge of the Americas (BOTA) was 3 minutes as of 2026-09-10T07:36:42Z (observed; reported by CBP, lane update At 8:00 am MDT). The commercial-vehicle wait at El Paso - Ysleta was 30 minutes as of 2026-09-10T07:36:42Z (observed; reported by CBP, lane update At 7:00 am MDT).",
+      "pass": true
+    },
+    {
+      "scenario": "air profile states the geometry gate honestly",
+      "question": "how many cargo flights at LAX",
+      "expected": "/placeholder/",
+      "actual": "Geometry placeholder — the observation area is not reviewed yet (ADR-0007); no aircraft metrics are computed. Facility data will appear once the fence is approved.",
+      "pass": true
+    },
+    {
+      "scenario": "air profile never fabricates a count",
+      "question": "how many cargo flights at LAX",
+      "expected": "false",
+      "actual": "false",
+      "pass": true
+    },
+    {
+      "scenario": "wait question does not misroute to Long Beach",
+      "question": "how long is the wait at El Paso",
+      "expected": "/El Paso - (?:Bridge of the Americas|Ysleta)/",
+      "actual": "The commercial-vehicle wait at El Paso - Bridge of the Americas (BOTA) was 3 minutes as of 2026-09-10T07:36:42Z (observed; reported by CBP, lane update At 8:00 am MDT). The commercial-vehicle wait at El Paso - Ysleta was 30 minutes as of 2026-09-10T07:36:42Z (observed; reported by CBP, lane update At 7:00 am MDT).",
+      "pass": true
+    },
+    {
+      "scenario": "fabricated facility wait rejected",
+      "question": "The commercial-vehicle wait at El Paso - BOTA was 999 minutes (observed; reported by CBP).",
+      "expected": "/does not match any metric/",
+      "actual": "Number 999 does not match any metric in the evidence bundle (§8.3 numeric accuracy).",
       "pass": true
     }
   ]

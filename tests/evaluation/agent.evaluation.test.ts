@@ -225,3 +225,51 @@ describe("UI-action intents (§4.4, §8.6)", async () => {
     expect(answer.verdict).toBe("rejected");
   });
 });
+
+describe("multimodal agent surface (ADR-0012/0013/0015)", async () => {
+  const manager = await createDataManager({ mode: "fixture" });
+  const LAND_WINDOW = { startAt: "2026-09-10T07:00:00Z", endAt: "2026-09-10T12:00:00Z" };
+
+  it("parses wait-time and cargo-flight questions", () => {
+    expect(parseQuestion("what's the wait at the El Paso crossing", manager.listChokepoints()).intent?.chokepointId).toBe("el-paso-border-crossings");
+    expect(parseQuestion("how long is the wait at El Paso", manager.listChokepoints()).intent?.chokepointId).toBe("el-paso-border-crossings");
+    // The "long"-collision regression: "how long" must not resolve to Long Beach.
+    expect(parseQuestion("how long is the wait at El Paso", manager.listChokepoints()).intent?.chokepointId).not.toBe("long-beach-approach");
+    expect(parseQuestion("how many cargo flights at LAX", manager.listChokepoints()).intent?.chokepointId).toBe("lax-cargo-air");
+  });
+
+  it("land profile: answers with OBSERVED facility wait values and provenance", async () => {
+    const { answer } = await askAgent("what's the wait at the El Paso crossing", manager, {
+      chokepointId: "el-paso-border-crossings",
+      window: LAND_WINDOW,
+    });
+    expect(answer.text).toMatch(/Bridge of the Americas \(BOTA\)/);
+    expect(answer.text).toMatch(/3 minutes/);
+    expect(answer.text).toMatch(/observed; reported by CBP/);
+  });
+
+  it("air profile: honest ADR-0007 refusal, never a fabricated aircraft count", async () => {
+    const { answer } = await askAgent("how many cargo flights at LAX", manager, {
+      chokepointId: "lax-cargo-air",
+      window: LAND_WINDOW,
+    });
+    expect(answer.text).toMatch(/placeholder/i);
+    expect(answer.text).toMatch(/ADR-0007/);
+  });
+
+  it("facility numbers are evaluator-checked: a fabricated wait is rejected", () => {
+    const fabricated: AgentClaim = {
+      id: "claim-facility-fab",
+      text: "The commercial-vehicle wait at El Paso - BOTA was 999 minutes (observed; reported by CBP).",
+      category: "OBSERVATION",
+      support: [{ kind: "metric", id: "sim-facility:cbp:240201:bridge:2026-09-10T07:36:42Z" }],
+      confidence: 0.9,
+    };
+    const v = evaluateClaims([fabricated], {
+      metricValues: new Map([["sim-facility:cbp:240201:bridge:2026-09-10T07:36:42Z", 3]]),
+      sourceHealth: "fresh",
+    });
+    expect(v.verdict).toBe("rejected");
+    expect(v.rejectedClaims[0]!.reason).toMatch(/does not match any metric/);
+  });
+});

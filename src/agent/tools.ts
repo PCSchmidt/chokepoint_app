@@ -115,6 +115,77 @@ function snapshotClaims(snapshot: ChokepointSnapshot): AgentClaim[] {
   return claims;
 }
 
+/**
+ * Multimodal claims (ADR-0013/0015): land profiles answer from OBSERVED
+ * facility wait-time readings; air profiles honestly state that metrics are
+ * blocked until geometry review. Facility language is crossing/wait — never
+ * vessel vocabulary, and never mixed with entity counts.
+ */
+function multimodalToolResult(intent: QueryIntent, snapshot: import("../data/manager").ChokepointSnapshot, window: { startAt: string; endAt: string }): ToolResult {
+  const profile = snapshot.profile;
+  if (profile.mode === "air") {
+    return {
+      tool: intent.tool,
+      status: "unavailable",
+      note:
+        snapshot.multimodalNotice ??
+        "No reviewed observation area yet — aircraft metrics are not computed (ADR-0007 gate).",
+      chokepointId: profile.id,
+      window: null,
+      claims: [],
+      coverage: null,
+    };
+  }
+  const claims: AgentClaim[] = [];
+  for (const facility of snapshot.facilityMetrics) {
+    const commercial = facility.measurements.find((x) => x.laneGroup === "commercial_vehicle" && x.metric === "wait_minutes");
+    if (commercial && commercial.value !== null) {
+      claims.push({
+        id: `claim-facility-${facility.facilityId}-commercial-wait`,
+        text: `The commercial-vehicle wait at ${facility.displayName} was ${commercial.value} minutes as of ${facility.observedAt} (observed; reported by CBP${facility.providerUpdateLabel ? `, lane update ${facility.providerUpdateLabel}` : ""}).`,
+        category: "OBSERVATION",
+        support: [{ kind: "metric", id: facility.metricId }],
+        confidence: 0.95,
+        limitations: ["US-side wait times only, as published by CBP; lane updates are periodic, so readings may be hours old at quiet crossings."],
+      });
+    } else {
+      claims.push({
+        id: `claim-facility-${facility.facilityId}-unknown`,
+        text: `The commercial-vehicle wait at ${facility.displayName} is UNKNOWN for this window — the latest reading carries no usable wait value (missing is not zero, §3.3).`,
+        category: "LIMITATION",
+        support: [{ kind: "metric", id: facility.metricId }],
+        confidence: 0,
+      });
+    }
+  }
+  if (claims.length === 0) {
+    claims.push({
+      id: "claim-facility-none",
+      text: `No border-wait readings are available for ${profile.name} in this window — coverage is UNKNOWN, not zero.`,
+      category: "LIMITATION",
+      support: [{ kind: "metric", id: `${profile.id}.facility` }],
+      confidence: 0,
+    });
+  }
+  const lastObservationAt = snapshot.facilityMetrics.reduce<string | null>(
+    (acc, f) => (acc === null || f.observedAt > acc ? f.observedAt : acc),
+    null,
+  );
+  return {
+    tool: intent.tool,
+    status: "ok",
+    note: null,
+    chokepointId: profile.id,
+    window,
+    claims,
+    coverage: {
+      sourceState: snapshot.health.fixture.state,
+      lastObservationAt,
+      scopeLabel: "observed border wait times at CBP crossings (SIMULATED fixtures)",
+    },
+  };
+}
+
 /** map intent tool -> claim assembly. All data comes from the snapshot. */
 export function runTool(
   intent: QueryIntent,
@@ -140,6 +211,11 @@ export function runTool(
     };
   }
   const snapshot = manager.getSnapshot(chokepointId, window);
+  // Multimodal profiles (ADR-0012/0013/0015): facility claims for land; an
+  // honest refusal-to-fabricate for air until geometry is reviewed.
+  if (snapshot.profile.mode === "land" || snapshot.profile.mode === "air") {
+    return multimodalToolResult(intent, snapshot, window);
+  }
   const coverage = {
     sourceState: snapshot.health.fixture.state,
     lastObservationAt: snapshot.observations.length > 0 ? snapshot.observations[snapshot.observations.length - 1]!.observedAt : null,

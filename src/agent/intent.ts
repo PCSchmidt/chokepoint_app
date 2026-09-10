@@ -61,6 +61,10 @@ const TOOL_PATTERNS: ReadonlyArray<{ tool: ToolName; patterns: RegExp[] }> = [
   { tool: "set_time_window", patterns: [/\b(set|change|narrow|widen) (the )?(time )?window\b/i, /\b(show|display) (me )?the last (6|24|72) ?h(ours)?\b/i] },
   { tool: "compare_with_baseline", patterns: [/\bcompared? (to|with|against)\b/i, /\bvs\.? (the )?baseline\b/i, /\bchange (from|vs) baseline\b/i] },
   { tool: "count_vessels", patterns: [/\bhow many (vessels|ships|boats)\b/i, /\bvessel count\b/i] },
+  // Multimodal intents (ADR-0012/0013): wait-time and cargo-flight questions
+  // resolve to the count surface with the mode-specific profile.
+  { tool: "count_vessels", patterns: [/\b(how (long|much of a wait)|what.s the wait|wait time)\b/i] },
+  { tool: "count_vessels", patterns: [/\b(cargo )?(flights|aircraft|planes)\b/i] },
   { tool: "list_recent_changes", patterns: [/\bwhat (has )?changed\b/i, /\brecent (changes|events)\b/i, /\bany events\b/i] },
   { tool: "summarize_chokepoint", patterns: [/\bsummar(y|ize|ise)\b/i, /\boverview\b/i, /\bwhat.s (the )?situation\b/i] },
   { tool: "show_vessel_cohort", patterns: [/\b(show|list|which) (me )?(the )?(vessels|ships|cohort)\b/i, /\bwaiting cohort\b/i, /\banchored vessels\b/i] },
@@ -79,10 +83,15 @@ function matchChokepoint(text: string, profiles: readonly ChokepointProfile[]): 
   const t = text.toLowerCase();
   for (const p of profiles) {
     if (t.includes(p.id.toLowerCase())) return p.id;
-    // Any significant name word matches: "Long Beach", "Singapore", "Suez".
-    // Short words (<4 chars) never match — they are stop words, not places.
+    // Any significant name word matches with WORD BOUNDARIES — but a single
+    // ambiguous word (e.g. "long") must not match alone: require either the
+    // FULL name phrase or a distinctive (>= 5 chars, unique) word. "how long"
+    // must not match "Long Beach" (that collision was a real bug).
     const words = p.name.toLowerCase().split(/[ /]+/).filter((w) => w.length >= 4);
-    if (words.some((w) => t.includes(w))) return p.id;
+    const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const fullPhrase = p.name.toLowerCase().replace(/\s*\/\s*/, " ").replace(/\s+/g, "\\s+");
+    if (new RegExp(`\\b${fullPhrase}\\b`).test(t)) return p.id;
+    if (escaped.some((w) => (w === "long" ? false : new RegExp(`\\b${w}\\b`).test(t)))) return p.id;
   }
   return null;
 }
