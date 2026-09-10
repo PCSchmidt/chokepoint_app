@@ -71,23 +71,37 @@ export const SOURCE_REGISTRY: readonly SourceRegistryRecord[] = [
     keylessUsable: true,
   },
   {
+    // Admitted 2026-09-10 as a documented risk acceptance (ADR-0012): free
+    // API, ODbL v1.0 for the API and all public data (share-alike honored via
+    // the ADR-0010 posture: bounded in-memory buffer, no raw redistribution).
+    // OpenSky was evaluated and REJECTED for live use: its terms require a
+    // written agreement for ANY operational REST API integration, even
+    // non-profit (VERIFIED 2026-09-10) — see ADR-0012.
+    // Operator classification is inferred from provider-published metadata
+    // and documented callsign heuristics only (§8.4 IDENTITY) — never
+    // asserted as broadcast fact.
     sourceId: "adsb-lol",
-    label: "adsb.lol or another permitted feed",
+    label: "adsb.lol (first admitted live air-cargo source, risk-accepted; OpenSky rejected for live use)",
     capability: "air-cargo-positions",
-    admissionStatus: "deferred",
-    termsDecision: "TBD",
+    admissionStatus: "admitted",
+    termsDecision: "approved",
     candidateProvider: "adsb.lol",
-    keyRisk: "Coverage, terms, operator classification",
+    keyRisk: "No published rate limits (UNVERIFIED); operator classification inferred, not broadcast; ODbL share-alike on published derivatives",
     keylessUsable: true,
   },
   {
+    // Admitted 2026-09-10 (ADR-0013): CBP's own bwt.cbp.gov endpoint verified
+    // live with all 85 US crossings, keyless, US-gov public-domain basis.
+    // Wait-time values are OBSERVED facility metrics (ADR-0015), never mixed
+    // into vessel/entity totals. api.trade.gov + free api.data.gov key is the
+    // documented fallback service.
     sourceId: "cbp-wait-times",
-    label: "CBP or relevant government source",
+    label: "CBP Border Wait Times via bwt.cbp.gov (keyless, OBSERVED facility metrics)",
     capability: "border-wait-times",
-    admissionStatus: "deferred",
-    termsDecision: "TBD",
+    admissionStatus: "admitted",
+    termsDecision: "approved",
     candidateProvider: "CBP",
-    keyRisk: "Geographic scope and update reliability",
+    keyRisk: "Update cadence is per-port and periodic (hours-stale at quiet crossings is normal); US-border scope only",
     keylessUsable: true,
   },
   {

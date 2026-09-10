@@ -16,8 +16,9 @@ that every provider is suitable for commercial redistribution.
 | Vessel classification | AISStream `ShipStaticData` fields plus source metadata | Cargo/tanker/bulk filtering | Missing or incorrect classifications | **APPROVED (same source/decision as AISStream, ADR-0010)** |
 | Port/chokepoint context | OpenStreetMap / public geospatial sources | Port geometry and contextual map features | ODbL attribution and derived-database obligations | **TBD** |
 | Baseline fixtures | Synthetic tracks plus legally retained observations | Deterministic testing and demos | Must never be presented as live data | N/A — synthetic, labeled `SIMULATED` |
-| Air cargo positions | adsb.lol or another permitted feed | Later cargo-aircraft layer | Coverage, terms, operator classification | **TBD** (later phase) |
-| Border wait times | CBP or relevant government source | Later land layer | Geographic scope and update reliability | **TBD** (later phase) |
+| Air cargo positions | adsb.lol or another permitted feed | Cargo-aircraft layer (Phase 6: admission decided, adapter not built) | Coverage, terms, operator classification (inferred, not broadcast) | **APPROVED with risk acceptance (ADR-0012, 2026-09-10)** — adsb.lol admitted (free, ODbL v1.0); OpenSky rejected for live use (operational REST API requires written agreement per its terms, VERIFIED) |
+| Border wait times | CBP or relevant government source | Land layer (Phase 6: admission decided, adapter not built) | Geographic scope and update reliability | **APPROVED (ADR-0013, 2026-09-10)** — CBP bwt.cbp.gov direct endpoint (verified live, 85 crossings, El Paso BOTA/PDN/Ysleta included), keyless, US-gov public-domain basis; api.trade.gov + free api.data.gov key (1,000 req/h) is the documented fallback |
+| Rail crossings | FRA Form 71 / other public sources | Second land signal | No live public source exists | **DEFERRED (ADR-0014, 2026-09-10)** — only the static Grade Crossing Inventory exists; permitted as future static context, never as a movement/delay signal |
 | Traffic flow | Optional TomTom or permitted public source | Later land corridor layer | Proprietary terms and request costs | **TBD** (later phase) |
 | Port throughput | Official port/open-data sources | Later contextual metric | Different definitions and reporting cadence | **TBD** (later phase) |
 

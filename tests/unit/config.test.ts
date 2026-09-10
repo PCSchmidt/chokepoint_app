@@ -64,17 +64,35 @@ describe("chokepoint registry", () => {
 });
 
 describe("source registry", () => {
-  it("admits exactly the AISStream pair (ADR-0010) and defers everything else", () => {
-    expect(admittedSources().map((s) => s.sourceId).sort()).toEqual(["ais-classification", "aisstream"]);
+  it("admits the AISStream pair (ADR-0010) plus the multimodal pair (ADRs 0012/0013); rail and others stay deferred", () => {
+    expect(admittedSources().map((s) => s.sourceId).sort()).toEqual([
+      "adsb-lol",
+      "ais-classification",
+      "aisstream",
+      "cbp-wait-times",
+    ]);
     for (const s of SOURCE_REGISTRY) {
-      if (s.sourceId === "aisstream" || s.sourceId === "ais-classification") {
-        expect(s.admissionStatus).toBe("admitted");
-        expect(s.termsDecision).toBe("approved");
+      if (["aisstream", "ais-classification", "adsb-lol", "cbp-wait-times"].includes(s.sourceId)) {
+        expect(s.admissionStatus, s.sourceId).toBe("admitted");
+        expect(s.termsDecision, s.sourceId).toBe("approved");
       } else {
-        expect(s.termsDecision).toBe("TBD");
-        expect(s.admissionStatus).not.toBe("admitted");
+        expect(s.termsDecision, s.sourceId).toBe("TBD");
+        expect(s.admissionStatus, s.sourceId).not.toBe("admitted");
       }
     }
+  });
+
+  it("the multimodal admissions are keyless with documented risks (ADRs 0012/0013)", () => {
+    const air = SOURCE_REGISTRY.find((s) => s.sourceId === "adsb-lol")!;
+    const land = SOURCE_REGISTRY.find((s) => s.sourceId === "cbp-wait-times")!;
+    for (const s of [air, land]) {
+      expect(s.keylessUsable).toBe(true);
+      expect(s.keyRisk.length).toBeGreaterThan(20);
+    }
+    // ADR-0012: OpenSky's terms barrier is recorded in the air label.
+    expect(air.label).toMatch(/OpenSky rejected/);
+    // ADR-0015: wait times are OBSERVED facility metrics, not entity data.
+    expect(land.label).toMatch(/facility metrics/);
   });
 
   it("the admitted source is not keyless (server-side key required, §14.1)", () => {

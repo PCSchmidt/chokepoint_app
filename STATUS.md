@@ -468,6 +468,45 @@ completion claims. Claims here must match the repository.
   (understanding without explanation; evidence-drawer trust) are honestly
   marked unanswerable without observed first-use.
 
+## Multimodal admission gate (2026-09-10): decisions recorded, adapters NOT started
+
+- Per the design note's ordering, source research and §6.1 admission-gate
+  decisions were completed BEFORE any adapter/config work, and this phase
+  STOPS at the checkpoint.
+- **Air — adsb.lol ADMITTED with documented risk acceptance (ADR-0012)**:
+  free API, ODbL v1.0 for the API and all public data (VERIFIED in the
+  provider's OpenAPI license field); live probe of `/v2/lat/lon/dist`
+  confirmed aircraft position/kinematics/type/registration fields mapping
+  onto `TransportObservation`. OpenSky was evaluated and REJECTED for live
+  use: its terms require a written agreement for ANY operational REST API
+  integration, even non-profit (VERIFIED). Operator classification is
+  inferred-only (callsign/registration heuristics over provider-published
+  metadata) — the same "not separable from broadcast data alone" discipline
+  as bulk carriers.
+- **Land — CBP Border Wait Times ADMITTED (ADR-0013)**: CBP's own
+  `bwt.cbp.gov/api/waittimes` verified live with all 85 US crossings
+  (El Paso BOTA/PDN/Ysleta included), **keyless**, US-gov public-domain
+  basis. Wait times are OBSERVED facility metrics; api.trade.gov + free
+  api.data.gov key recorded as fallback. Update cadence is per-port and
+  periodic — hours-stale readings at quiet crossings are normal, not
+  failures.
+- **Rail — DEFERRED (ADR-0014)**: only the static FRA Grade Crossing
+  Inventory (Form 71) exists publicly; no live blockage/delay feed. Permitted
+  as future static context only, never a movement signal.
+- **Data model — FacilityMetric record decided (ADR-0015)**: facility-level
+  signals enter as a separate model alongside `TransportObservation` (the
+  design note's option b), with the same §3.1–3.3 provenance/truth-state
+  contracts. Wait times are OBSERVED facility values, never mixed into
+  entity totals; synthetic entities (option c) rejected outright.
+- `DATA_SOURCES.md` rows and `SOURCE_REGISTRY` updated with real decisions
+  (no TBD left on these rows); config tests assert the new admission state.
+- Raw research evidence archived under `research/sources/raw/` (CBP sample
+  with all 85 crossings — the future fixture base, api.data.gov developer
+  manual, BTS catalog extract).
+- **This phase deliberately built NO adapters, no profiles, no UI, no agent
+  surface, no rail fixtures** — the checkpoint before implementation, per the
+  design note.
+
 ## Deliberately deferred (per §17 roadmap)
 
 - **Phase 2 remainder** — baseline comparison, event detector + §12.3
