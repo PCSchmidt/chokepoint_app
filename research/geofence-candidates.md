@@ -473,3 +473,84 @@ of coarse edges (it is too coarse to exclude that strip exactly).
 - OSM anchorage polygons fetched via Overpass API
   (`https://overpass-api.de/api/interpreter`), bbox 1.15,103.8 → 1.45,104.2,
   `way["seamark:type"="anchorage"]`; hull + 0.02° buffer computed with shapely.
+
+
+---
+
+## 7. el-paso-border-crossings — el-paso-crossings-area (port-basin, LAND, ADR-0013)
+
+### 7.1 Candidate polygon (CANDIDATE — NOT APPROVED)
+
+```
+[
+  [31.7750, -106.4700],
+  [31.7750, -106.4300],
+  [31.7550, -106.4300],
+  [31.7550, -106.4700],
+]
+```
+
+Vertex notes (BOTA frame):
+- `(31.7652, -106.4516)` [OSM] Bridge of the Americas port entry, OSM way
+  31.7652052, -106.4515868 (VERIFIED via Nominatim 2026-09-10).
+- Frame extents [APPROX]: a ~2.2 km × ~3.5 km rectangle centered on the BOTA
+  crossing point, covering the bridge approach roads on both sides of the Rio
+  Grande. This fence is FRAMING ONLY — facility metrics key on `facilityId`
+  (ADR-0013/0015), never on membership.
+
+### 7.2 Ysleta frame (second fence, same profile)
+
+```
+[
+  [31.6820, -106.3450],
+  [31.6820, -106.3250],
+  [31.6630, -106.3250],
+  [31.6630, -106.3450],
+]
+```
+
+- `(31.6725, -106.3360)` [OSM] Ysleta Port of Entry, OSM node (VERIFIED via
+  Nominatim 2026-09-10). Frame extents [APPROX]: ~2.1 km × ~1.8 km rectangle
+  centered on the crossing.
+
+### 7.3 Review notes
+
+- Purpose: map framing for facility-metric display. NOT a measurement region —
+  the CBP adapter keys readings by `facilityId`; membership is never computed.
+- Because these frames are display-only, the APPROX extents are low-risk; the
+  real review question is "does the frame visually contain the crossing".
+- Data behind the metrics: CBP bwt.cbp.gov (ADR-0013), facility records for
+  port_numbers 240201 (BOTA) and 240203 (Ysleta).
+
+## 8. lax-cargo-air — lax-cargo-approach (approach-flow, AIR, ADR-0012)
+
+### 8.1 Candidate polygon
+
+```
+[
+  [33.9500, -118.6500],
+  [33.9500, -118.2500],
+  [33.7000, -118.2500],
+  [33.7000, -118.6500],
+]
+```
+
+- `(33.9422, -118.4214)` [OSM] KLAX aerodrome reference point (VERIFIED via
+  Nominatim 2026-09-10).
+- Frame extents [APPROX]: ~28 km east-west × ~28 km north-south box centered
+  slightly west of the field, covering the arrival/departure corridors over
+  the Pacific (runways 24L/24R/25L/25R operate westbound flows most of the
+  time — approaches come from the west over the ocean).
+- Candidate source for a future v2 refinement: published FAA instrument
+  procedures (IAPs for KLAX) or sector definitions; a polygon along the final
+  approach courses would be tighter than a box.
+
+### 8.2 Review notes
+
+- Purpose: bounded adsb.lol point-query area (ADR-0012). The adapter queries
+  `/v2/lat/{lat}/lon/{lon}/dist/{dist}`; the fence communicates the coverage
+  region and constrains display. Regional observed context — NOT worldwide
+  completeness (gods-eye-view operational lesson, ADR-0012 cross-reference).
+- Classification caveat stands: freight cohorts are inferred from callsign
+  prefixes over provider-published metadata; the fence contains no
+  classification logic.

@@ -42,6 +42,12 @@ export interface DataManagerOptions {
   /** Server-side AISStream key (host-supplied). Absent -> live is UNAVAILABLE. */
   apiKey?: string | undefined;
   /**
+   * Optional live CBP border-wait adapter (ADR-0013, keyless). When provided,
+   * land profiles serve LIVE facility metrics (falling back to SIMULATED
+   * fixtures when the live layer has no data). Injectable for tests.
+   */
+  cbpAdapter?: import("./cbpWaitTimesAdapter").CbpWaitTimesAdapter | undefined;
+  /**
    * Fixture manifests directly (BROWSER path: import.meta.glob over the
    * checked-in SIMULATED fixtures). When omitted, manifests load from
    * fixtureDir via node:fs (node/tests path).
@@ -86,7 +92,12 @@ export interface ChokepointSnapshot {
   provenance: ProvenanceRecord[];
   attribution: AttributionRecord;
   sourceMode: SourceMode;
-  health: { fixture: SourceStatus; live: SourceStatus | null };
+  health: {
+    fixture: SourceStatus;
+    live: SourceStatus | null;
+    /** Live CBP border-wait health when the keyless adapter is wired (ADR-0013). */
+    cbp: SourceStatus | null;
+  };
   /**
    * Facility-level readings in the window (ADR-0015): populated for
    * facility-based profiles (border crossings); empty for entity profiles.
@@ -170,6 +181,11 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
   const fixtureAdapter = new FixtureSourceAdapter({ manifests });
   await fixtureAdapter.enable({ now, trigger: "startup" });
 
+  // CBP live facility layer: keyless, so it can run in BOTH modes (§16.1).
+  const cbpAdapter = options.cbpAdapter ?? null;
+  if (cbpAdapter) {
+    await cbpAdapter.enable({ now: now, trigger: "startup" });
+  }
   const liveAdapter =
     options.mode === "live" && options.apiKey
       ? new AisStreamAdapter({
@@ -199,12 +215,16 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
       // Land serves facility metrics keyed by facilityId; air serves an honest
       // empty state until geometry is reviewed. Neither runs entity metrics.
       if (profile.mode === "land" || profile.mode === "air") {
-        const allFacility = fixtureAdapter.getFacilityMetrics({ timeWindow: window });
+        // Land: LIVE CBP readings when the keyless adapter serves data
+        // (ADR-0013), otherwise the SIMULATED fixture readings. The source of
+        // truth is visible per-record via the providerId, never mixed.
+        const liveFacility = cbpAdapter ? [...cbpAdapter.getFacilityMetrics()] : [];
+        const fixtureFacility = fixtureAdapter.getFacilityMetrics({ timeWindow: window });
         const profileFacilities =
           profile.mode === "land"
-            ? // Land profiles serve CBP facility readings keyed by facilityId
-              // (ADR-0013/0015) — no geofence membership involved.
-              allFacility.filter((f) => f.facilityId.startsWith("cbp:"))
+            ? liveFacility.length > 0
+              ? liveFacility
+              : fixtureFacility.filter((f) => f.facilityId.startsWith("cbp:"))
             : [];
         const emptyMetric = (metricId: string, metricType: string): import("../analytics/metrics").DerivedMetric => ({
           metricId,
@@ -242,7 +262,11 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
           provenance: fixtureAdapter.getProvenancePerProvider(),
           attribution: fixtureAdapter.getAttribution(),
           sourceMode: options.mode,
-          health: { fixture: fixtureAdapter.getStatus(), live: liveAdapter ? liveAdapter.getStatus() : null },
+          health: {
+            fixture: fixtureAdapter.getStatus(),
+            live: liveAdapter ? liveAdapter.getStatus() : null,
+            cbp: cbpAdapter ? cbpAdapter.getStatus() : null,
+          },
           facilityMetrics: profileFacilities,
           multimodalNotice:
             profile.mode === "air"
@@ -344,7 +368,11 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
         provenance: fixtureAdapter.getProvenancePerProvider(),
         attribution: fixtureAdapter.getAttribution(),
         sourceMode: options.mode,
-        health: { fixture: fixtureAdapter.getStatus(), live: liveAdapter ? liveAdapter.getStatus() : null },
+        health: {
+          fixture: fixtureAdapter.getStatus(),
+          live: liveAdapter ? liveAdapter.getStatus() : null,
+          cbp: cbpAdapter ? cbpAdapter.getStatus() : null,
+        },
         // Maritime snapshots carry NO facility data (ADR-0015 separation):
         // facility signals belong to facility profiles only.
         facilityMetrics: [],
@@ -354,6 +382,7 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
     destroy: () => {
       fixtureAdapter.destroy();
       liveAdapter?.destroy();
+      cbpAdapter?.destroy();
     },
   };
   return manager;
