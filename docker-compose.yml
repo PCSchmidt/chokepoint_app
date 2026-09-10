@@ -1,0 +1,49 @@
+# Chokepoint local stack (CHOKEPOINT-PLAN.md §16.1, §17 Phase 5).
+# Fixture mode: no credentials required for any service. The app serves the
+# built SPA, the §10.3 API, and /metrics; Prometheus scrapes it; Grafana
+# visualizes the §13.2 dashboards. Everything stays loopback-exposed only.
+services:
+  app:
+    build: .
+    image: chokepoint-app:local
+    ports:
+      - "8787:8787"
+    environment:
+      - PORT=8787
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    environment:
+      # Local demo only: anonymous view access, no provisioned admin password
+      # in the repo (§14.1 — no credentials in the repository).
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped

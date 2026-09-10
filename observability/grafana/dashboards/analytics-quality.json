@@ -1,0 +1,36 @@
+{
+  "title": "Chokepoint — Analytics Quality (§13.2)",
+  "uid": "chokepoint-analytics-quality",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Evidence bundles built (rate 5m)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 7 },
+      "targets": [{ "expr": "sum by (result) (rate(chokepoint_evidence_bundles_total[5m]))" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Claims accepted vs rejected (rate 5m)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 7 },
+      "targets": [
+        { "expr": "rate(chokepoint_claims_accepted_total[5m])" },
+        { "expr": "sum by (category) (rate(chokepoint_claims_rejected_total[5m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Agent turns by outcome (rate 5m)",
+      "gridPos": { "x": 0, "y": 7, "w": 12, "h": 7 },
+      "targets": [{ "expr": "sum by (outcome) (rate(chokepoint_agent_requests_total[5m]))" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Metric computations (rate 5m)",
+      "gridPos": { "x": 12, "y": 7, "w": 12, "h": 7 },
+      "targets": [{ "expr": "sum by (result) (rate(chokepoint_metric_computations_total[5m]))" }]
+    }
+  ]
+}

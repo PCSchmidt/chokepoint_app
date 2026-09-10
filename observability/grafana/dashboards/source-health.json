@@ -1,0 +1,41 @@
+{
+  "title": "Chokepoint — Source Health (§13.2)",
+  "uid": "chokepoint-source-health",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "HTTP requests (rate 5m)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 },
+      "targets": [{ "expr": "sum(rate(chokepoint_http_requests_total[5m]))" }]
+    },
+    {
+      "type": "stat",
+      "title": "HTTP 5xx errors (rate 5m)",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 6 },
+      "targets": [{ "expr": "sum(rate(chokepoint_http_request_errors_total[5m]))" }],
+      "fieldConfig": { "defaults": { "thresholds": { "steps": [
+        { "color": "green", "value": null },
+        { "color": "red", "value": 0.01 }
+      ] } } }
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests by route",
+      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 8 },
+      "targets": [{ "expr": "sum by (route) (rate(chokepoint_http_requests_total[5m]))" }]
+    },
+    {
+      "type": "text",
+      "title": "Reading this dashboard",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 4 },
+      "options": {
+        "mode": "markdown",
+        "content": "Fixture mode has no live source traffic: source health states come from /api/ready (readiness reports fixture FRESH/STALE/DEGRADED honestly). A missing live key is UNAVAILABLE — expected and not an incident (§6.2)."
+      }
+    }
+  ]
+}

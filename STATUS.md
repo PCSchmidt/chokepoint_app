@@ -128,6 +128,29 @@ completion claims. Claims here must match the repository.
 - Verified end-to-end on the built app: `health ok/alive`, `ready 200 true`
   with 3 honest source reports, profiles list, metrics scrape containing
   request counters, SPA index served, 405 on POST. 268 tests.
+- **Prometheus + Grafana + Docker Compose (§16.1, §17 Phase 5)**:
+  `observability/prometheus.yml` scrapes `app:8787/metrics`;
+  `observability/grafana/` provisions the two §13.2 dashboards (Source
+  Health, Analytics Quality) from files with a Prometheus datasource;
+  `docker-compose.yml` brings up app + Prometheus + Grafana in fixture mode
+  with NO credentials in the repo (Grafana anonymous VIEWER for the local
+  demo, signup disabled). Multi-stage `Dockerfile` builds the app and ships
+  `dist/ + src/ + fixtures` behind `npm run serve`; container healthcheck
+  gates Prometheus startup. VERIFIED LIVE: `docker compose up -d` -> app
+  healthy, Prometheus target `up = 1`, Grafana ok.
+- **Security review (§14)**: `docs/security-review-2026-09-10.md` — 10 PASS
+  checks (no credentials in repo, SW cross-origin never cached, server
+  traversal guard, key hygiene, bounded labels, log redaction, no provisioned
+  Grafana password) and 2 accepted residual notes (local-only exposure;
+  container runs as root — both fine for the local demo, required review
+  before public hosting per §16.2).
+- **Clean-machine setup (README)**: Docker one-command stack, bare-Node
+  serve, and the full dev command list. Documentation matches runtime
+  behavior (commands verified on this machine).
+- Phase 5 exit criteria: reproducible build/test path (npm + Docker) MET;
+  no credentials or prohibited data in repository (security review) MET;
+  metrics scrape successfully MET; local install works in fixture mode MET
+  (Docker + bare Node); documentation matches runtime behavior MET.
 
 ## Actually built (Phase 0/1)
 

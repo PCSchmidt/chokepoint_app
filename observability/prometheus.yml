@@ -1,1 +1,13 @@
-# Prometheus configuration arrives in Phase 5 (§17). Placeholder to pin layout.
+# Prometheus scrape configuration (§13.1, §17 Phase 5).
+# Scrapes the Chokepoint application server's /metrics endpoint.
+# Docker Compose references this file; the app service name resolves via
+# the compose network.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: chokepoint
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["app:8787"]
