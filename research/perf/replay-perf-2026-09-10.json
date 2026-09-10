@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-10T12:26:02.810Z",
+  "generatedAt": "2026-09-10T14:55:05.410Z",
   "budgets": {
     "renderMeanMs": 33,
     "renderMaxMs": 250,
@@ -14,14 +14,14 @@
   },
   "replay": {
     "renderCount": 26,
-    "meanMs": 3.342307693683184,
-    "maxMs": 8,
-    "p95Ms": 6.4000000059604645
+    "meanMs": 2.9653846157284884,
+    "maxMs": 5.5,
+    "p95Ms": 4.700000002980232
   },
   "scrub": {
     "count": 20,
-    "maxMs": 156.5,
-    "meanMs": 123.38000000044704
+    "maxMs": 169.5,
+    "meanMs": 128.50000000074505
   },
   "idle": {
     "renderCount": 0,

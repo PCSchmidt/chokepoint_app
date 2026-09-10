@@ -553,6 +553,28 @@ land profile, each with placeholder geometry awaiting human review.**
   adapters exist and are tested but the browser app runs fixture-mode);
   aircraft/truck corridor visualization; rail (deferred, ADR-0014).
 
+## Multimodal UI + full live wiring (2026-09-10)
+
+- **AdsbLolAdapter wired into the manager** (completing decision 2 for air):
+  air profiles serve LIVE aircraft inside the reviewed `lax-cargo-approach`
+  fence — membership via the now-approved geometry — with inferred freight
+  cohorts (entityType "aircraft") separated from non-freight; honest notices
+  distinguish unwired (no adapter) from empty sky (regional coverage, ADR-0012);
+  `health.adsb` surfaced. 3 wiring tests. The adapters read the MANAGER clock
+  context (a wiring subtlety the tests caught: adapter enable must use the
+  caller's timeline, not its own).
+- **HUD facility wait cards** (`facilityCards`, §4.2): one card per crossing
+  with the commercial-vehicle wait, verbatim lane update context in the note;
+  SIM badge in fixture mode, LIVE when the CBP layer is wired, UNKNOWN with an
+  honest "missing is not zero" note when a crossing has no usable reading.
+- **Globe air rendering** (§9.3 visual direction applied): aircraft render AT
+  ALTITUDE (no ground clamp) in amber; maritime stays sea-blue and
+  ground-clamped. Pixel QA and perf:replay budgets re-verified PASS (render
+  mean 3.0 ms / max 5.5 ms).
+- **Honest scope still holds**: the browser app boots fixture-mode; the live
+  adapters are exercised through the manager in tests and are ready for the
+  §10.2 hosted-API/browser-live path, which remains deliberately unbuilt.
+
 ## Geometry v1 approved for the multimodal profiles (2026-09-10)
 
 - **Review owner ChrisSchmidt approved the candidate frames** ("Frames look

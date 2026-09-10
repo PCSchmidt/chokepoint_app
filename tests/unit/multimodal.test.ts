@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 import { createDataManager } from "../../src/data/manager";
+import { facilityCards } from "../../src/ui/freightHud";
 
 const WINDOW = { startAt: "2026-09-10T07:00:00Z", endAt: "2026-09-10T12:00:00Z" };
 
@@ -31,6 +32,28 @@ describe("land profile: CBP facility metrics (ADR-0013/0015)", async () => {
     expect(snap.metrics.vesselCount.quality.coverageNote).toMatch(/facility profile/);
     expect(snap.comparisons.vesselCount.direction).toBe("unknown");
     expect(snap.observations).toHaveLength(0); // facility profile: no entity data
+  });
+
+  it("facility HUD cards render commercial wait with SIM badge in fixture mode (§4.2)", async () => {
+    const snap = manager.getSnapshot("el-paso-border-crossings", WINDOW);
+    const cards = facilityCards(snap, false); // fixture mode: CBP layer unwired
+    expect(cards).toHaveLength(2);
+    const bota = cards.find((c) => c.id === "facility-cbp:240201:bridge")!;
+    expect(bota.value).toBe("3 min");
+    expect(bota.badge).toBe("SIM"); // never reads as live in fixture mode
+    // DOM render of facility cards is covered in the happy-dom agentPanel/phase3-ui suites.
+  });
+
+  it("facility cards show LIVE when the CBP layer is wired, UNKNOWN when no reading", () => {
+    const snap = manager.getSnapshot("el-paso-border-crossings", WINDOW);
+    const wired = facilityCards(snap, true);
+    expect(wired.every((c) => c.badge === "LIVE")).toBe(true);
+    // A null-value facility renders UNKNOWN with an honest note (never zero).
+    const snapNoReadings = { ...snap, facilityMetrics: [{ ...snap.facilityMetrics[0]!, measurements: [{ laneGroup: "commercial_vehicle" as const, metric: "wait_minutes" as const, value: null, unit: "minutes" as const }] }] };
+    const cards = facilityCards(snapNoReadings, true);
+    expect(cards[0]!.badge).toBe("UNKNOWN");
+    expect(cards[0]!.value).toBe("—");
+    expect(cards[0]!.note).toMatch(/missing is not zero/);
   });
 
   it("facility data NEVER bleeds into entity observations (§3.1, ADR-0015)", () => {

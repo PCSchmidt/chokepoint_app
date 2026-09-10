@@ -123,16 +123,30 @@ export function createFreightGlobe(
       for (const entity of toRemove) viewer.entities.remove(entity);
       for (const o of observations) {
         const selected = selectedEntityId !== undefined && o.entityId === selectedEntityId;
+        const isAir = o.mode === "air";
+        // §9.3 visual direction: sea blue for maritime, amber for air. Air
+        // points render AT ALTITUDE (aircraft are airborne); maritime points
+        // stay ground-clamped.
+        const color = isAir
+          ? Cesium.Color.fromCssColorString("#f59e0b")
+          : o.quality.classification === "confirmed"
+            ? Cesium.Color.fromCssColorString("#38bdf8")
+            : Cesium.Color.fromCssColorString("#94a3b8");
         viewer.entities.add({
           id: `${o.entityId}@${o.observedAt}`,
-          position: Cesium.Cartesian3.fromDegrees(o.position.longitude, o.position.latitude),
+          position: Cesium.Cartesian3.fromDegrees(
+            o.position.longitude,
+            o.position.latitude,
+            isAir ? (o.position.altitudeMeters ?? 0) : undefined,
+          ),
           point: {
             pixelSize: selected ? 18 : 12,
-            color: o.quality.classification === "confirmed" ? Cesium.Color.fromCssColorString("#38bdf8") : Cesium.Color.fromCssColorString("#94a3b8"),
+            color,
             outlineColor: selected ? Cesium.Color.WHITE : Cesium.Color.fromCssColorString("#04121f"),
             outlineWidth: 2,
-            // Height reference keeps points readable over the ellipsoid surface.
-            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            // Height reference keeps maritime points readable over the surface;
+            // air points carry real altitude and must not clamp.
+            heightReference: isAir ? Cesium.HeightReference.NONE : Cesium.HeightReference.CLAMP_TO_GROUND,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           description: `<table>

@@ -129,6 +129,31 @@ export function comparisonLine(comparison: {
 }
 
 /** Render cards into a container (thin DOM writer). */
+/**
+ * Facility wait-time cards (ADR-0013/0015): one card per crossing with the
+ * commercial-vehicle wait. OBSERVED values from CBP render with the OBSERVED
+ * badge vocabulary... §9.3 badges are LIVE/DERIVED/ESTIMATE/SIM/STALE/UNKNOWN —
+ * an observed CBP reading in fixture mode carries SIM (never reads as live);
+ * in live deployments it carries LIVE. The lane update label is shown
+ * verbatim (ADR-0013).
+ */
+export function facilityCards(snapshot: ChokepointSnapshot, liveFacilityLayer: boolean): MetricCard[] {
+  return snapshot.facilityMetrics.map((f) => {
+    const wait = f.measurements.find((x) => x.laneGroup === "commercial_vehicle" && x.metric === "wait_minutes");
+    const hasValue = wait !== undefined && wait.value !== null;
+    return {
+      id: `facility-${f.facilityId}`,
+      label: `Border wait (commercial) — ${f.displayName}`,
+      value: hasValue ? `${wait.value} min` : "—",
+      raw: hasValue ? (wait.value as number) : null,
+      unit: "minutes",
+      badge: hasValue ? (liveFacilityLayer ? "LIVE" : "SIM") : "UNKNOWN",
+      note: hasValue ? null : `No usable commercial wait reading (${f.providerUpdateLabel ?? "update pending"}) — missing is not zero.`,
+      formulaVersion: "cbp-wait-observed-v1",
+    };
+  });
+}
+
 export function renderFreightHud(container: HTMLElement, snapshot: ChokepointSnapshot, truthStateBadge: Badge = "SIM"): void {
   container.innerHTML = "";
   const modeBadge = document.createElement("span");
@@ -138,7 +163,10 @@ export function renderFreightHud(container: HTMLElement, snapshot: ChokepointSna
   modeBadge.dataset.testid = "mode-badge";
   container.appendChild(modeBadge);
 
-  for (const card of metricCards(snapshot)) {
+  // Facility cards for land/air profiles (facility metrics live OUTSIDE the
+  // entity metric list, ADR-0015); liveFacilityLayer = the CBP adapter is wired.
+  const facilityLayerLive = snapshot.health.cbp !== null;
+  for (const card of [...metricCards(snapshot), ...facilityCards(snapshot, facilityLayerLive)]) {
     const el = document.createElement("div");
     el.className = "metric-card";
     el.dataset.testid = `card-${card.id}`;
