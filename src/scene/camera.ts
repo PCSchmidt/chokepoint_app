@@ -14,7 +14,12 @@ export interface CameraFrame {
   /** Camera height in meters, chosen to fit the fence bbox with margin. */
   heightMeters: number;
   headingDegrees: number;
-  /** Oblique pitch for area context (§4.1 camera framing). */
+  /**
+   * Top-down pitch. The destination IS the frame center: with an oblique
+   * pitch the visible ground center lands ~height*tan(|pitch|) away from the
+   * destination, which pushed fences off-screen (QA pick test caught it).
+   * A top-down view guarantees the whole fence fits deterministically.
+   */
   pitchDegrees: number;
 }
 
@@ -48,6 +53,6 @@ export function frameForRing(ring: PolygonRing, padding = 1.6): CameraFrame {
     longitude: (minLon + maxLon) / 2,
     heightMeters: heightForSpanKm(Math.max(spanLatKm, spanLonKm), padding),
     headingDegrees: 0,
-    pitchDegrees: -45,
+    pitchDegrees: -90,
   };
 }

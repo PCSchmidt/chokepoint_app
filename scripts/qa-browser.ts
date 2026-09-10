@@ -70,6 +70,43 @@ try {
     }
   }
   void investigated;
+  // Diagnose scene contents at screenshot time (entity counts by kind).
+  const sceneDiagnostics = await page.evaluate(() => {
+    const el = document.querySelector<HTMLElement>("#globe");
+    const viewer = (el as unknown as { __viewer?: unknown })?.__viewer;
+    void viewer; // Cesium doesn't expose the viewer on the element by default
+    return { note: "viewer not exposed; checking entity counts via window hook instead" };
+  });
+  const entityKinds = await page.evaluate(() => {
+    const debug = (window as unknown as { __chokepointDebug?: { getEntityKinds: () => Array<{ id: string; hasPoint: boolean; hasPolygon: boolean }> } }).__chokepointDebug;
+    return debug ? debug.getEntityKinds() : [];
+  });
+  const points = entityKinds.filter((e) => e.hasPoint).length;
+  const polygons = entityKinds.filter((e) => e.hasPolygon).length;
+  console.log(`scene entities: points=${points}, polygons=${polygons}, total=${entityKinds.length}`);
+  // §12.5 visibility assertion via Cesium picking (not screenshot reading).
+  const pickResult = await page.evaluate(() => {
+    const debug = (window as unknown as { __chokepointDebug?: { pickPointEntities: () => { total: number; picked: number; sample: Array<{ id: string; windowX: number; windowY: number; pickedSelf: boolean }> } } }).__chokepointDebug;
+    return debug ? debug.pickPointEntities() : { total: 0, picked: 0, sample: [] };
+  });
+  console.log(`pick info: ${pickResult.picked}/${pickResult.total} (drillPick can miss ground-clamped points; pixels are authoritative)`);
+  const camera = await page.evaluate(() => {
+    const debug = (window as unknown as { __chokepointDebug?: { getCamera: () => unknown } }).__chokepointDebug;
+    return debug ? debug.getCamera() : null;
+  });
+  console.log("camera position:", JSON.stringify(camera));
+  const pixelSample = await page.evaluate(() => {
+    const debug = (window as unknown as { __chokepointDebug?: { samplePointPixels: () => unknown } }).__chokepointDebug;
+    return debug ? debug.samplePointPixels() : null;
+  });
+  console.log("pixel sample:", JSON.stringify(pixelSample));
+  // §12.5 visibility assertion: canvas pixel sampling is authoritative.
+  const pixel = pixelSample as { total: number; colorHits: number; sample: Array<{ id: string; windowX: number; windowY: number; rgba: number[] | null }> } | null;
+  console.log(`pixel check: ${pixel?.colorHits}/${pixel?.total} vessel points render their color on canvas`);
+  if (!pixel || pixel.total === 0 || pixel.colorHits === 0) {
+    failures += 1;
+    console.error("FAIL: no vessel points are actually rendered on the canvas");
+  }
   await page.screenshot({ path: "research/qa/phase3-investigation.png", fullPage: false });
   console.log("screenshot saved: research/qa/phase3-investigation.png");
   const modeBadge = await page.textContent("[data-testid=mode-badge]");

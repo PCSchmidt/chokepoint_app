@@ -30,15 +30,22 @@ export interface FreightGlobe {
   showObservations(observations: readonly TransportObservation[], selectedEntityId?: string | null): void;
   /** Draw reviewed fence outlines (always visible; they are the measurement region). */
   showFences(rings: ReadonlyArray<{ id: string; ring: PolygonRing; label: string }>): void;
+  /**
+   * Visibility truth test (QA): project point entities to window coordinates
+   * and drill-pick. An entity that picks at its own position IS rendered.
+   */
+  pickPointEntities(): {
+    total: number;
+    picked: number;
+    sample: Array<{ id: string; windowX: number; windowY: number; pickedSelf: boolean }>;
+  };
   destroy(): void;
 }
 
 function viewerOptions(): Cesium.Viewer.ConstructorOptions {
   return {
-    // Keyless stack: bundled offline imagery, no ion assets, no terrain service.
-    baseLayer: Cesium.ImageryLayer.fromProviderAsync(
-      Cesium.TileMapServiceImageryProvider.fromUrl(Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII"))
-    ),
+    // Start with NO base layer; the caller adds exactly one (keyless) layer.
+    baseLayer: false,
     baseLayerPicker: false,
     geocoder: false,
     homeButton: false,
@@ -51,7 +58,36 @@ function viewerOptions(): Cesium.Viewer.ConstructorOptions {
     selectionIndicator: false,
     requestRenderMode: true, // §12.5: no idle render loop
     maximumRenderTimeChange: Infinity,
+    // QA reads pixels post-frame (samplePointPixels); production can keep
+    // this off, but one extra buffer flag is cheaper than a render hook.
+    contextOptions: { webgl: { preserveDrawingBuffer: true } },
   };
+}
+
+/**
+ * Exactly ONE base layer, chosen by the stack id. Esri/OSM tile errors (no
+ * network, provider outage) fall back to the bundled offline Natural Earth II
+ * layer so the globe still renders keyless/offline (§6.2).
+ */
+function baseLayerFor(id: MapStackId): Cesium.ImageryProvider {
+  if (id === "esri-world-imagery") {
+    return new Cesium.UrlTemplateImageryProvider({
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      credit: getMapStack(id)?.attributionText ?? "",
+      maximumLevel: 19,
+    });
+  }
+  if (id === "osm-standard") {
+    return new Cesium.UrlTemplateImageryProvider({
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      credit: getMapStack(id)?.attributionText ?? "© OpenStreetMap contributors",
+      maximumLevel: 19,
+    });
+  }
+  // Offline bundled imagery (Natural Earth II).
+  return Cesium.TileMapServiceImageryProvider.fromUrl(
+    Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
+  ) as unknown as Cesium.TileMapServiceImageryProvider;
 }
 
 export function createFreightGlobe(
@@ -60,29 +96,11 @@ export function createFreightGlobe(
 ): FreightGlobe {
   const descriptor = getMapStack(mapStackId);
   if (!descriptor) throw new Error(`unknown map stack: ${mapStackId}`);
-  // The offline stack uses the bundled provider; external stacks swap the base
-  // layer after viewer creation (keeps this module thin).
-  const viewer = new Cesium.Viewer(container, viewerOptions());
+  const viewer = new Cesium.Viewer(container, {
+    ...(viewerOptions() as Cesium.Viewer.ConstructorOptions),
+    baseLayer: new Cesium.ImageryLayer(baseLayerFor(mapStackId)),
+  });
   viewer.creditDisplay.addStaticCredit(new Cesium.Credit(descriptor.attributionText));
-
-  const applyExternal = (id: MapStackId): void => {
-    if (id === "esri-world-imagery") {
-      viewer.imageryLayers.addImageryProvider(
-        new Cesium.UrlTemplateImageryProvider({
-          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          credit: getMapStack(id)?.attributionText ?? "",
-        })
-      );
-    } else if (id === "osm-standard") {
-      viewer.imageryLayers.addImageryProvider(
-        new Cesium.UrlTemplateImageryProvider({
-          url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-          credit: getMapStack(id)?.attributionText ?? "© OpenStreetMap contributors",
-        })
-      );
-    }
-  };
-  applyExternal(mapStackId);
 
   return {
     viewer,
@@ -99,17 +117,23 @@ export function createFreightGlobe(
       return frame;
     },
     showObservations(observations, selectedEntityId) {
-      viewer.entities.removeAll();
+      // Remove only POINT entities; fence polygons must survive (§4.1: fences
+      // stay visible; the earlier removeAll() wiped them each frame).
+      const toRemove = viewer.entities.values.filter((e) => typeof e.id === "string" && e.id.includes("@"));
+      for (const entity of toRemove) viewer.entities.remove(entity);
       for (const o of observations) {
         const selected = selectedEntityId !== undefined && o.entityId === selectedEntityId;
         viewer.entities.add({
           id: `${o.entityId}@${o.observedAt}`,
           position: Cesium.Cartesian3.fromDegrees(o.position.longitude, o.position.latitude),
           point: {
-            pixelSize: selected ? 14 : 8,
-            color: o.quality.classification === "confirmed" ? Cesium.Color.SKYBLUE : Cesium.Color.GRAY,
-            outlineColor: selected ? Cesium.Color.WHITE : Cesium.Color.fromCssColorString("#0a1522"),
-            outlineWidth: 1,
+            pixelSize: selected ? 18 : 12,
+            color: o.quality.classification === "confirmed" ? Cesium.Color.fromCssColorString("#38bdf8") : Cesium.Color.fromCssColorString("#94a3b8"),
+            outlineColor: selected ? Cesium.Color.WHITE : Cesium.Color.fromCssColorString("#04121f"),
+            outlineWidth: 2,
+            // Height reference keeps points readable over the ellipsoid surface.
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           description: `<table>
             <tr><td>entity</td><td>${o.entityId}</td></tr>
@@ -121,16 +145,53 @@ export function createFreightGlobe(
       }
       viewer.scene.requestRender();
     },
+    pickPointEntities() {
+      const scene = viewer.scene;
+      const pointEntities = viewer.entities.values.filter((e) => e.point && e.position);
+      let pickedCount = 0;
+      const sample: Array<{ id: string; windowX: number; windowY: number; pickedSelf: boolean }> = [];
+      for (const entity of pointEntities) {
+        const clockTime = viewer.clock.currentTime;
+        const cartesian = entity.position!.getValue(clockTime);
+        if (!cartesian) continue;
+        const windowPos = Cesium.SceneTransforms.worldToWindowCoordinates(scene, cartesian);
+        if (!windowPos) continue;
+        const pickedObjects = scene.drillPick(windowPos, 3);
+        const pickedSelf = pickedObjects.some((p) => p?.id !== undefined && String(p.id) === String(entity.id));
+        if (pickedSelf) pickedCount += 1;
+        if (sample.length < 3) {
+          sample.push({
+            id: String(entity.id),
+            windowX: Math.round(windowPos.x),
+            windowY: Math.round(windowPos.y),
+            pickedSelf,
+          });
+        }
+      }
+      return { total: pointEntities.length, picked: pickedCount, sample };
+    },
+
     showFences(rings) {
       for (const { id, ring } of rings) {
+        const positions = Cesium.Cartesian3.fromDegreesArray(ring.flatMap(([lat, lon]) => [lon, lat]));
+        // Faint fill (fill alpha is kept low; Cesium surface-polygon OUTLINES
+        // are unsupported in most browsers, so the boundary is drawn as a
+        // separate polyline entity instead — always visible).
         viewer.entities.add({
           id: `fence-${id}`,
           polygon: {
-            hierarchy: Cesium.Cartesian3.fromDegreesArray(ring.flatMap(([lat, lon]) => [lon, lat])),
-            material: Cesium.Color.fromCssColorString("#38bdf8").withAlpha(0.08),
-            outline: true,
-            outlineColor: Cesium.Color.SKYBLUE.withAlpha(0.6),
+            hierarchy: new Cesium.PolygonHierarchy(positions),
+            material: Cesium.Color.fromCssColorString("#38bdf8").withAlpha(0.06),
             height: 0,
+          },
+        });
+        viewer.entities.add({
+          id: `fence-line-${id}`,
+          polyline: {
+            positions: [...positions, positions[0]!],
+            width: 2,
+            material: Cesium.Color.fromCssColorString("#7dd3fc"),
+            clampToGround: false,
           },
         });
       }

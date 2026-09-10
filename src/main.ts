@@ -13,6 +13,7 @@
 // this, the viewer cannot load its workers/imagery and render fails.
 window.CESIUM_BASE_URL = "/cesium/";
 
+import * as Cesium from "cesium";
 import "./styles.css";
 import { startup } from "./app/startup";
 import { shareUrl } from "./app/shareState";
@@ -35,6 +36,72 @@ let globe: FreightGlobe | null = null;
 let shownChokepointId: string | null = null;
 let timeline: TimelineController | null = null;
 let replayTick: number | null = null;
+
+// --- diagnostic helpers (QA only) ---
+function viewer_clock(g: NonNullable<FreightGlobe>): import("cesium").JulianDate {
+  return g.viewer.clock.currentTime;
+}
+function samplePixel(gl: WebGLRenderingContext | null, canvas: HTMLCanvasElement, x: number, y: number): [number, number, number, number] | null {
+  if (!gl) return null;
+  const px = new Uint8Array(4);
+  // y is in CSS pixels; the drawing buffer may differ — use gl.readPixels with
+  // y flipped to buffer coordinates.
+  const dpr = canvas.width / canvas.clientWidth;
+  const bx = Math.round(x * dpr);
+  const by = Math.round(canvas.height - y * dpr);
+  gl.readPixels(bx, by, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  return [px[0]!, px[1]!, px[2]!, px[3]!];
+}
+
+// Test/diagnostic hook (QA reads entity counts; contains no secrets).
+(window as unknown as { __chokepointDebug?: unknown }).__chokepointDebug = {
+  getEntityCount: () => (globe ? globe.viewer.entities.values.length : -1),
+  getEntityKinds: () =>
+    globe
+      ? globe.viewer.entities.values.map((e) => ({
+          id: String(e.id),
+          hasPoint: !!e.point,
+          hasPolygon: !!e.polygon,
+        }))
+      : [],
+  pickPointEntities: () => (globe ? globe.pickPointEntities() : { total: 0, picked: 0, sample: [] }),
+  /**
+   * Canvas pixel sampling at a point's projected position: does the vessel
+   * point color appear there? This bypasses pick entirely.
+   */
+  samplePointPixels: () => {
+    if (!globe) return { total: 0, onCanvas: 0, colorHits: 0, sample: [] };
+    const scene = globe.viewer.scene;
+    const canvas = scene.canvas;
+    const pointEntities = globe.viewer.entities.values.filter((e) => e.point && e.position);
+    let colorHits = 0;
+    const sample: Array<{ id: string; windowX: number; windowY: number; rgba: number[] | null }> = [];
+    for (const entity of pointEntities) {
+      const cartesian = entity.position!.getValue(viewer_clock(globe));
+      if (!cartesian) continue;
+      const windowPos = Cesium.SceneTransforms.worldToWindowCoordinates(scene, cartesian);
+      if (!windowPos) continue;
+      const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+      const x = Math.round(windowPos.x);
+      const y = Math.round(windowPos.y);
+      const px = samplePixel(gl, canvas, x, y);
+      // Point color #38bdf8 = rgb(56,189,248); allow tolerance.
+      const isSeaBlue = px && Math.abs(px[0] - 56) < 40 && Math.abs(px[1] - 189) < 40 && Math.abs(px[2] - 248) < 40;
+      if (isSeaBlue) colorHits += 1;
+      if (sample.length < 3) sample.push({ id: String(entity.id), windowX: x, windowY: y, rgba: px ?? null });
+    }
+    return { total: pointEntities.length, colorHits, sample };
+  },
+  getCamera: () => {
+    if (!globe) return null;
+    const carto = globe.viewer.camera.positionCartographic;
+    return {
+      latitude: Number((carto.latitude * 180) / Math.PI),
+      longitude: Number((carto.longitude * 180) / Math.PI),
+      height: Math.round(carto.height),
+    };
+  },
+};
 
 // --- Boot: fixture mode; the Phase 5 API will supply live data (§16.1) ---
 // Checked-in SIMULATED fixtures travel with the bundle (small, provenance-
@@ -133,7 +200,13 @@ function openInvestigation(snapshot: AppStateSnapshot): void {
   globe = g;
   g.showFences(reviewedRings(chokepointId).map((r) => ({ id: r.id, ring: r.ring, label: r.id })));
   const profile = manager.listChokepoints().find((c) => c.id === chokepointId)!;
-  const primary = profile.geofences.find((ge) => ge.purpose === "approach-flow") ?? profile.geofences[0]!;
+  // Frame the fence that actually contains the observations (the waiting-cohort
+  // fence when present), not the wide approach corridor — §4.1 camera framing
+  // serves the data view, not the widest region.
+  const primary =
+    profile.geofences.find((ge) => ge.purpose === "waiting-cohort") ??
+    profile.geofences.find((ge) => ge.purpose === "approach-flow") ??
+    profile.geofences[0]!;
   if (primary.geometry.kind === "polygon") {
     g.frameRing(primary.geometry.ring);
   }

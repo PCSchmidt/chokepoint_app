@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { AppState, initialAppState, DEFAULT_REPLAY_SPEED } from "../../src/app/appState";
 import { encodeShareState, decodeShareState, toShareState, shareUrl } from "../../src/app/shareState";
 import { frameForRing, heightForSpanKm } from "../../src/scene/camera";
-import { getMapStack, MAP_STACKS, DEFAULT_MAP_STACK } from "../../src/scene/mapStack";
+import { getMapStack, MAP_STACKS, DEFAULT_MAP_STACK, OFFLINE_FALLBACK_STACK } from "../../src/scene/mapStack";
 import { selectBoundedCohort, cohortsAreStable, OVERLAY_BUDGETS } from "../../src/scene/renderGovernor";
 import type { DetectedEvent } from "../../src/analytics/events";
 import { TimelineController, replayWindow } from "../../src/ui/timeline";
@@ -129,7 +129,9 @@ describe("camera framing (§4.1)", () => {
     const frame = frameForRing(LB_RING);
     expect(frame.latitude).toBeCloseTo((33.7182 + 33.6382) / 2, 5);
     expect(frame.longitude).toBeCloseTo((-118.2387 + -118.1008) / 2, 5);
-    expect(frame.pitchDegrees).toBe(-45);
+    // Top-down: the destination IS the frame center (an oblique pitch lands
+    // the visible center height*tan(|pitch|) away — caught by QA picking).
+    expect(frame.pitchDegrees).toBe(-90);
     // Span: ~0.08 deg lat = ~8.9 km; height with 1.6 padding in a sane range.
     expect(frame.heightMeters).toBeGreaterThan(8_000);
     expect(frame.heightMeters).toBeLessThan(60_000);
@@ -283,11 +285,12 @@ describe("event card view model (bounded, §4.1)", () => {
 
 
 describe("keyless map stack (§4.1, §6.2)", () => {
-  it("default stack is offline and keyless; every option is keyless", () => {
-    expect(DEFAULT_MAP_STACK).toBe("natural-earth-ii");
-    const offline = getMapStack(DEFAULT_MAP_STACK)!;
-    expect(offline.offline).toBe(true);
-    expect(offline.keyless).toBe(true);
+  it("default is keyless Esri satellite (user decision 2026-09-09); offline fallback exists", () => {
+    expect(DEFAULT_MAP_STACK).toBe("esri-world-imagery");
+    expect(OFFLINE_FALLBACK_STACK).toBe("natural-earth-ii");
+    const fallback = getMapStack(OFFLINE_FALLBACK_STACK)!;
+    expect(fallback.offline).toBe(true);
+    // Every stack stays keyless (§6.2).
     for (const stack of MAP_STACKS) {
       expect(stack.keyless).toBe(true);
       expect(stack.attributionText.length).toBeGreaterThan(0);

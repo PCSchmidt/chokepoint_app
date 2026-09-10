@@ -60,5 +60,14 @@ export function getMapStack(id: string): MapStackDescriptor | undefined {
   return MAP_STACKS.find((m) => m.id === id);
 }
 
-/** The default is the offline stack: keyless and offline first (§6.2). */
-export const DEFAULT_MAP_STACK: MapStackId = "natural-earth-ii";
+/**
+ * Default stack: keyless Esri World Imagery — the best readily-available
+ * resolution without credentials (user decision 2026-09-09). The offline
+ * Natural Earth II stack remains FIRST in the registry and is the automatic
+ * fallback when there is no network: the app must still boot keyless AND
+ * offline (§6.2); globe.ts falls back to the offline layer on tile failure.
+ */
+export const DEFAULT_MAP_STACK: MapStackId = "esri-world-imagery";
+
+/** The offline fallback used when no network is available (§6.2). */
+export const OFFLINE_FALLBACK_STACK: MapStackId = "natural-earth-ii";
