@@ -7,6 +7,9 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createDataManager } from "../../src/data/manager";
 import { buildHealth, buildReadiness } from "../../src/telemetry/health";
 import { MetricsRegistry } from "../../src/telemetry/metrics";
@@ -99,7 +102,11 @@ describe("HTTP server integration (§10.3, §16.1)", () => {
   it("serves liveness, readiness, profiles, metrics, and static SPA fallback", async () => {
     const metrics = new MetricsRegistry();
     const { startServer } = await import("../../src/server/server");
-    const app = await startServer({ port: 0, staticDir: "dist", metrics });
+    // Minimal static root — CI runs tests BEFORE the build step, so the test
+    // must not depend on a built dist/ existing.
+    const staticRoot = mkdtempSync(join(tmpdir(), "chokepoint-static-"));
+    writeFileSync(join(staticRoot, "index.html"), "<!doctype html><html><body><div id=\"app\"></div></body></html>");
+    const app = await startServer({ port: 0, staticDir: staticRoot, metrics });
 
     const base = `http://127.0.0.1:${app.port}`;
 
