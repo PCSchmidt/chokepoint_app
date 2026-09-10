@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { createDataManager } from "../../src/data/manager";
 
 describe("fixture-mode manager (SIMULATED data only)", () => {
-  it("boots keyless and lists the three MVP profiles", async () => {
+  it("boots keyless and lists the maritime MVP profiles plus the multimodal candidates", async () => {
     const manager = await createDataManager({ mode: "fixture" });
     expect(manager.mode).toBe("fixture");
     expect(manager.liveAvailable).toBe(false); // no key, honest (§6.2)
@@ -16,6 +16,8 @@ describe("fixture-mode manager (SIMULATED data only)", () => {
       "long-beach-approach",
       "singapore-malacca-approach",
       "suez-canal-approaches",
+      "lax-cargo-air",
+      "el-paso-border-crossings",
     ]);
     manager.destroy();
   });

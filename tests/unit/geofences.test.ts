@@ -40,9 +40,15 @@ const TEST_FENCE: ReviewedGeofence = {
 };
 
 describe("ADR-0007 guard", () => {
-  it("production fences are reviewed v1 and membership works", () => {
+  it("production fences are reviewed v1 and membership works (maritime; multimodal placeholders excluded by design)", () => {
     for (const c of CHOKEPOINT_REGISTRY) {
       for (const g of c.geofences) {
+        if (c.mode !== "sea") {
+          // Multimodal candidates (ADR-0012/0013) hold placeholder geometry:
+          // they must stay unregistered and out of membership entirely.
+          expect(g.geometryStatus).toBe("placeholder");
+          continue;
+        }
         expect(g.geometryStatus).toBe("reviewed");
         const ring = g.geometry.kind === "polygon" ? g.geometry.ring : undefined;
         if (!ring) throw new Error("reviewed fences must be polygons");

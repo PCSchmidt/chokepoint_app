@@ -13,12 +13,27 @@ import {
 import { admittedSources, SOURCE_REGISTRY } from "../../src/config/sourceRegistry";
 
 describe("chokepoint registry", () => {
-  it("contains exactly the three MVP chokepoints (§2.1)", () => {
+  it("contains the three maritime MVP chokepoints (§2.1) plus the multimodal candidates (ADRs 0012/0013)", () => {
     expect(CHOKEPOINT_REGISTRY.map((c) => c.id)).toEqual([
       "long-beach-approach",
       "singapore-malacca-approach",
       "suez-canal-approaches",
+      "lax-cargo-air",
+      "el-paso-border-crossings",
     ]);
+  });
+
+  it("multimodal profiles carry placeholder geometry that blocks metrics (ADR-0007 gate intact)", () => {
+    for (const id of ["lax-cargo-air", "el-paso-border-crossings"]) {
+      const p = getChokepoint(id)!;
+      expect(p.mode).toBe(id === "lax-cargo-air" ? "air" : "land");
+      for (const g of p.geofences) {
+        expect(g.geometryStatus).toBe("placeholder");
+        expect(g.reviewOwner).toBeNull();
+        expect(isPlaceholder(g)).toBe(true);
+        expect(() => assertUsableGeofence(g)).toThrow(/placeholder/);
+      }
+    }
   });
 
   it("exposes lookup by stable id", () => {
@@ -39,8 +54,8 @@ describe("chokepoint registry", () => {
     }
   });
 
-  it("geometry v1 (ADR-0011): all six geofences are reviewed, owned, versioned, and usable", () => {
-    const all = CHOKEPOINT_REGISTRY.flatMap((c) => c.geofences);
+  it("geometry v1 (ADR-0011): the six MARITIME geofences are reviewed, owned, versioned, and usable", () => {
+    const all = CHOKEPOINT_REGISTRY.filter((c) => c.mode === "sea").flatMap((c) => c.geofences);
     expect(all).toHaveLength(6);
     for (const g of all) {
       expect(g.geometryStatus).toBe("reviewed");

@@ -15,6 +15,12 @@ import {
   type RawObservation,
   type TransportObservation,
 } from "./observation";
+import {
+  normalizeFacilityMetric,
+  type FacilityMetric,
+  type FacilityNormalizationResult,
+  type RawFacilityMetric,
+} from "./facilityMetric";
 
 /** Every fixture manifest must declare exactly this truth state. */
 export const REQUIRED_FIXTURE_TRUTH_STATE = "SIMULATED" as const;
@@ -34,6 +40,8 @@ export interface FixtureManifest {
   };
   scenario?: Record<string, unknown>;
   observations: RawObservation[];
+  /** Optional facility-level readings (ADR-0015); same SIMULATED guard applies. */
+  facilityMetrics?: RawFacilityMetric[];
 }
 
 export interface LoadedFixture {
@@ -42,6 +50,9 @@ export interface LoadedFixture {
   truthState: "SIMULATED";
   observations: TransportObservation[];
   rejected: Array<{ reason: string; observationId?: string | undefined }>;
+  /** Normalized facility readings (empty when the fixture has none). */
+  facilityMetrics: FacilityMetric[];
+  facilityRejected: Array<{ reason: string; metricId?: string | undefined }>;
 }
 
 export interface FixtureDirectoryResult {
@@ -101,11 +112,24 @@ export function parseFixture(raw: unknown): LoadedFixture {
     }
   }
 
+  const facilityAccepted: FacilityMetric[] = [];
+  const facilityRejected: LoadedFixture["facilityRejected"] = [];
+  for (const record of manifest.facilityMetrics ?? []) {
+    const result: FacilityNormalizationResult = normalizeFacilityMetric(record);
+    if (result.ok) {
+      facilityAccepted.push(result.metric);
+    } else {
+      facilityRejected.push({ reason: result.reason, metricId: result.metricId });
+    }
+  }
+
   return {
     fixtureId: manifest.fixtureId,
     description: manifest.description,
     truthState: "SIMULATED",
     observations: accepted,
     rejected,
+    facilityMetrics: facilityAccepted,
+    facilityRejected,
   };
 }

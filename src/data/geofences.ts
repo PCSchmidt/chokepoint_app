@@ -183,8 +183,14 @@ export function toReviewedGeofence(fence: Geofence): ReviewedGeofence {
  * review owner on 2026-09-09 (ADR-0011). Phase 2 geofence-bound metrics read
  * this registry, never hardcoded polygons.
  */
-export const REVIEWED_GEOFENCE_REGISTRY: readonly ReviewedGeofence[] =
-  CHOKEPOINT_REGISTRY.flatMap((c) => c.geofences).map(toReviewedGeofence);
+export const REVIEWED_GEOFENCE_REGISTRY: readonly ReviewedGeofence[] = CHOKEPOINT_REGISTRY.flatMap(
+  (c) => c.geofences,
+)
+  // Placeholder fences (multimodal candidates, ADR-0012/0013) are NOT
+  // registrable: they would throw in toReviewedGeofence. They stay in the
+  // config for map framing only and never enter production membership.
+  .filter((f) => f.geometryStatus === "reviewed")
+  .map(toReviewedGeofence);
 
 export function getReviewedGeofence(id: string): ReviewedGeofence | undefined {
   return REVIEWED_GEOFENCE_REGISTRY.find((f) => f.id === id);

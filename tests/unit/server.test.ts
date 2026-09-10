@@ -33,7 +33,7 @@ describe("readiness payload (§16.1, §3.1 honest states)", async () => {
   it("is ready in fixture mode with profiles registered", async () => {
     const envelope = buildReadiness(manager);
     expect(envelope.data.ready).toBe(true);
-    expect(envelope.data.chokepointCount).toBe(3);
+    expect(envelope.data.chokepointCount).toBe(5);
     expect(envelope.data.checks.find((c) => c.name === "profiles-registered")!.ok).toBe(true);
     expect(envelope.data.checks.find((c) => c.name === "default-window-resolvable")!.ok).toBe(true);
   });

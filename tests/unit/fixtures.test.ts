@@ -54,6 +54,7 @@ describe("checked-in fixture set (§12.2 scenarios)", () => {
     const { fixtures, files } = await loadFixtureDirectory(fixturesDir);
     expect(files.sort()).toEqual(
       [
+        "cbp-border-wait-el-paso.json",
         "classification-change.json",
         "conflicting-sources.json",
         "duplicates.json",
@@ -80,6 +81,14 @@ describe("checked-in fixture set (§12.2 scenarios)", () => {
         expect(fixture.rejected).toEqual([]);
       }
     }
+  });
+
+  it("cbp-border-wait-el-paso: facility fixture parses cleanly (ADR-0013/0015)", async () => {
+    const { fixtures } = await loadFixtureDirectory(fixturesDir);
+    const fx = fixtures.find((f) => f.fixtureId === "cbp-border-wait-el-paso")!;
+    expect(fx.observations).toHaveLength(0); // facility data, not entity data
+    expect(fx.facilityMetrics).toHaveLength(2);
+    expect(fx.facilityRejected).toEqual([]);
   });
 
   it("normal-transit: ordered transit with expected count", async () => {

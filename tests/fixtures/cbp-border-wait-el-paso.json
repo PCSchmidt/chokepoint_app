@@ -1,0 +1,216 @@
+{
+  "fixtureId": "cbp-border-wait-el-paso",
+  "truthState": "SIMULATED",
+  "simulated": true,
+  "description": "SIMULATED: facility-level border wait metrics for two El Paso crossings (BOTA + Ysleta), derived from a real CBP bwt.cbp.gov sample captured 2026-09-10 and replayed as simulated data. Never presented as live; never mixed into vessel/entity totals (ADR-0015).",
+  "provenance": {
+    "generatedBy": "fixture transformer from research/sources/raw/cbp-bwt-sample-2026-09-10.json (ADR-0013 fixture-first pattern)",
+    "providerId": "simulated-fixture",
+    "licenseId": "CC0-1.0-synthetic"
+  },
+  "scenario": {
+    "expectedFacilityMetrics": 2,
+    "facilities": [
+      "cbp:240201:bridge",
+      "cbp:240203:ysleta"
+    ],
+    "note": "lane wait_minutes + lanes_open readings; lane update labels kept verbatim"
+  },
+  "observations": [],
+  "facilityMetrics": [
+    {
+      "metricId": "sim-facility:cbp:240201:bridge:2026-09-10T07:36:42Z",
+      "facilityId": "cbp:240201:bridge",
+      "facilityType": "border-crossing",
+      "displayName": "El Paso - Bridge of the Americas (BOTA)",
+      "mode": "land",
+      "location": {
+        "latitude": 31.7576,
+        "longitude": -106.4444
+      },
+      "observedAt": "2026-09-10T07:36:42Z",
+      "receivedAt": "2026-09-10T07:36:42Z",
+      "measurements": [
+        {
+          "laneGroup": "commercial_vehicle",
+          "metric": "wait_minutes",
+          "value": 3,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "commercial_vehicle",
+          "metric": "lanes_open",
+          "value": 2,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "fast",
+          "metric": "wait_minutes",
+          "value": 2,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "fast",
+          "metric": "lanes_open",
+          "value": 2,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "passenger_vehicle",
+          "metric": "wait_minutes",
+          "value": 60,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "passenger_vehicle",
+          "metric": "lanes_open",
+          "value": 3,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "ready",
+          "metric": "wait_minutes",
+          "value": 55,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "ready",
+          "metric": "lanes_open",
+          "value": 5,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "pedestrian",
+          "metric": "wait_minutes",
+          "value": 6,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "pedestrian",
+          "metric": "lanes_open",
+          "value": 4,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "pedestrian",
+          "metric": "wait_minutes",
+          "value": 0,
+          "statusLabel": "Lanes Closed"
+        }
+      ],
+      "providerUpdateLabel": "At 8:00 am MDT",
+      "portStatus": "Open",
+      "constructionNotice": null,
+      "source": {
+        "providerId": "cbp-bwt",
+        "endpointId": "bwt.cbp.gov/api/waittimes",
+        "recordRef": "port_number=240201",
+        "licenseId": "public-domain-usg"
+      },
+      "quality": {
+        "sourceState": "fresh"
+      },
+      "truthState": "OBSERVED",
+      "simulated": true,
+      "providerId": "simulated-fixture",
+      "note": "SIMULATED fixture derived from a real CBP sample (2026-09-10); never presented as live."
+    },
+    {
+      "metricId": "sim-facility:cbp:240203:ysleta:2026-09-10T07:36:42Z",
+      "facilityId": "cbp:240203:ysleta",
+      "facilityType": "border-crossing",
+      "displayName": "El Paso - Ysleta",
+      "mode": "land",
+      "location": {
+        "latitude": 31.6836,
+        "longitude": -106.5448
+      },
+      "observedAt": "2026-09-10T07:36:42Z",
+      "receivedAt": "2026-09-10T07:36:42Z",
+      "measurements": [
+        {
+          "laneGroup": "commercial_vehicle",
+          "metric": "wait_minutes",
+          "value": 30,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "commercial_vehicle",
+          "metric": "lanes_open",
+          "value": 5,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "fast",
+          "metric": "wait_minutes",
+          "value": 20,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "fast",
+          "metric": "lanes_open",
+          "value": 3,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "passenger_vehicle",
+          "metric": "wait_minutes",
+          "value": 0,
+          "statusLabel": "Lanes Closed"
+        },
+        {
+          "laneGroup": "nexus_sentri",
+          "metric": "wait_minutes",
+          "value": 15,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "nexus_sentri",
+          "metric": "lanes_open",
+          "value": 2,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "ready",
+          "metric": "wait_minutes",
+          "value": 1,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "ready",
+          "metric": "lanes_open",
+          "value": 5,
+          "statusLabel": "no delay"
+        },
+        {
+          "laneGroup": "pedestrian",
+          "metric": "wait_minutes",
+          "value": 20,
+          "statusLabel": "delay"
+        },
+        {
+          "laneGroup": "pedestrian",
+          "metric": "lanes_open",
+          "value": 4,
+          "statusLabel": "delay"
+        }
+      ],
+      "providerUpdateLabel": "At 7:00 am MDT",
+      "portStatus": "Open",
+      "constructionNotice": null,
+      "source": {
+        "providerId": "cbp-bwt",
+        "endpointId": "bwt.cbp.gov/api/waittimes",
+        "recordRef": "port_number=240203",
+        "licenseId": "public-domain-usg"
+      },
+      "quality": {
+        "sourceState": "fresh"
+      },
+      "truthState": "OBSERVED",
+      "simulated": true,
+      "providerId": "simulated-fixture",
+      "note": "SIMULATED fixture derived from a real CBP sample (2026-09-10); never presented as live."
+    }
+  ]
+}

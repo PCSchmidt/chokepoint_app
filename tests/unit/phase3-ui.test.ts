@@ -46,7 +46,7 @@ describe("mission launcher render (§4.1)", async () => {
     const container = document.createElement("div");
     const cards = launcherCards(manager2.listChokepoints(), (f) => manager2.coverageHint(f));
     renderMissionLauncher(container, cards, () => {});
-    expect(container.querySelectorAll(".launcher-card").length).toBe(3);
+    expect(container.querySelectorAll(".launcher-card").length).toBe(5);
     const suez = container.querySelector<HTMLElement>("[data-testid=launcher-suez-canal-approaches]")!;
     expect(suez.textContent).toMatch(/UNKNOWN/);
     const lb = container.querySelector<HTMLElement>("[data-testid=launcher-long-beach-approach]")!;

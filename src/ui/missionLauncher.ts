@@ -12,6 +12,7 @@ export interface LauncherCard {
   id: string;
   name: string;
   region: string;
+  mode: import("../config/chokepoints").TransportMode;
   fenceCount: number;
   /** Per-fence live coverage hints from §6.1 evidence. */
   coverage: Array<{ fenceId: string; hint: "covered" | "unknown" }>;
@@ -21,7 +22,14 @@ export interface LauncherCard {
 }
 
 export function launcherCards(
-  profiles: readonly { id: string; name: string; region: string; geofences: readonly { id: string }[]; limitations: readonly string[] }[],
+  profiles: readonly {
+    id: string;
+    name: string;
+    region: string;
+    mode: import("../config/chokepoints").TransportMode;
+    geofences: readonly { id: string }[];
+    limitations: readonly string[];
+  }[],
   coverageHint: (fenceId: string) => "covered" | "unknown",
 ): LauncherCard[] {
   return profiles.map((p) => {
@@ -32,6 +40,7 @@ export function launcherCards(
       id: p.id,
       name: p.name,
       region: p.region,
+      mode: p.mode,
       fenceCount: p.geofences.length,
       coverage,
       coverageState: state,
@@ -61,12 +70,17 @@ export function renderMissionLauncher(
     meta.textContent = `${card.region} · ${card.fenceCount} geofence(s)`;
     const coverage = document.createElement("div");
     coverage.className = `launcher-coverage coverage-${card.coverageState}`;
+    // Mode-aware signal vocabulary: AIS for sea, ADS-B for air, wait times for
+    // land (the underlying provider differs by mode; the honest-state logic is
+    // identical and data-driven).
+    const signal =
+      card.mode === "sea" ? "Live AIS coverage" : card.mode === "air" ? "Live ADS-B coverage" : "Live border-wait coverage";
     coverage.textContent =
       card.coverageState === "covered"
-        ? "Live AIS coverage: observed (§6.1 smoke evidence)"
+        ? `${signal}: observed (§6.1 smoke evidence)`
         : card.coverageState === "partial"
-          ? "Live AIS coverage: partial — some fences unknown"
-          : "Live AIS coverage: UNKNOWN — long windows needed; not zero (§3.3)";
+          ? `${signal}: partial — some fences unknown`
+          : `${signal}: UNKNOWN — long windows needed; not zero (§3.3)`;
     el.appendChild(name);
     el.appendChild(meta);
     el.appendChild(coverage);

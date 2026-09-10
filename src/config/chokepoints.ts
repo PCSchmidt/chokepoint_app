@@ -339,11 +339,97 @@ export const SUEZ_CANAL_APPROACHES: ChokepointProfile = {
   ],
 };
 
-/** All supported chokepoints. The MVP set is exactly these three (§2.1). */
+// ---------------------------------------------------------------------------
+// Multimodal profiles (ADR-0012/0013/0015). GEOMETRY IS PLACEHOLDER: per
+// ADR-0007/0011 the reviewed-geometry step is a deliberate human-approval
+// gate, and the §6.1 admission decision does NOT approve geometry. Candidates
+// below use coarse bbox placeholders around the named facility; they block
+// metric computation via assertUsableGeofence() until a human review owner
+// approves v1 coordinates with provenance (see research/geofence-candidates.md).
+// ---------------------------------------------------------------------------
+
+/**
+ * AIR: Los Angeles cargo-aircraft monitoring area. Purpose: observe freight
+ * operators (inferred cohorts, ADR-0012) on approach/departure paths around
+ * LAX. The bbox is a large coarse placeholder, NOT reviewed geometry — it
+ * must not be used for any membership computation until reviewed (the guard
+ * throws by design).
+ */
+export const LAX_CARGO_AIR: ChokepointProfile = {
+  id: "lax-cargo-air",
+  name: "Los Angeles Cargo Air",
+  region: "North America",
+  mode: "air",
+  configVersion: "0.3.0",
+  revisedAt: "2026-09-10",
+  geofences: [
+    {
+      id: "lax-cargo-approach",
+      purpose: "approach-flow",
+      geometryVersion: "placeholder-2026-09-10",
+      geometryStatus: "placeholder",
+      reviewOwner: null,
+      effectiveDate: null,
+      inclusionRule: null,
+      coordinateReference: "EPSG:4326",
+      rationale:
+        "CANDIDATE: cargo-aircraft observation area around LAX (KLAX). Boundary proposal must anchor on published FAA approach/departure procedures or sector definitions before review; a bbox is a placeholder that blocks metrics by design. Data source: adsb.lol (ADR-0012), operator cohorts inferred from provider-published metadata only.",
+      geometry: { kind: "placeholder-bbox", minLat: 33.65, minLon: -118.65, maxLat: 34.05, maxLon: -118.15 },
+    },
+  ],
+  supportedMetrics: ["vessel_count", "moving_fraction"],
+  limitations: [
+    "GEOMETRY PLACEHOLDER: the bbox is not reviewed; no membership/metric computation is permitted (ADR-0007 gate)",
+    "Aircraft broadcast no cargo flag: freight-operator cohorts are inferred from provider-published metadata and callsign heuristics (classification: inferred, ADR-0012)",
+    "adsb.lol coverage follows community receiver density; regional observed context, never worldwide completeness",
+    "aircraft counts use air-traffic vocabulary, not vessel vocabulary — counts are 'aircraft observed', never 'vessels'",
+  ],
+};
+
+/**
+ * LAND: El Paso border crossings (CBP, ADR-0013). Facility-level: the CBP
+ * adapter emits FacilityMetric records keyed by facilityId, NOT
+ * TransportObservations. The placeholder fence only frames the map view; it
+ * is not used for entity membership and stays blocked until reviewed.
+ */
+export const EL_PASO_BORDER_CROSSINGS: ChokepointProfile = {
+  id: "el-paso-border-crossings",
+  name: "El Paso Border Crossings",
+  region: "North America",
+  mode: "land",
+  configVersion: "0.3.0",
+  revisedAt: "2026-09-10",
+  geofences: [
+    {
+      id: "el-paso-crossings-area",
+      purpose: "port-basin",
+      geometryVersion: "2026-09-10-v0",
+      geometryStatus: "placeholder",
+      reviewOwner: null,
+      effectiveDate: null,
+      inclusionRule: null,
+      coordinateReference: "EPSG:4326",
+      rationale:
+        "CANDIDATE: frames the El Paso crossing cluster (BOTA 240201, Ysleta 240203) for map display only. Facility metrics are keyed by facilityId, NOT by geofence membership — the fence is presentation context, never a measurement region, until a review owner approves v1 geometry with provenance.",
+      geometry: { kind: "placeholder-bbox", minLat: 31.6, minLon: -106.65, maxLat: 31.85, maxLon: -106.35 },
+    },
+  ],
+  supportedMetrics: ["vessel_count"],
+  limitations: [
+    "GEOMETRY PLACEHOLDER: framing-only; facility metrics key on facilityId, not membership (ADR-0013/0015)",
+    "US-side data only: wait times measure inbound-to-US lanes as published by CBP; no Mexican or Canadian authority data",
+    "Update cadence is per-port and periodic; hours-stale readings at quiet crossings are normal (lane update_time shown verbatim)",
+    "wait_minutes is an OBSERVED facility value reported by CBP; Chokepoint derives nothing from it in v1 (ADR-0013)",
+  ],
+};
+
+/** All supported profiles: three maritime MVPs (§2.1) + two multimodal candidates. */
 export const CHOKEPOINT_REGISTRY: readonly ChokepointProfile[] = [
   LONG_BEACH_APPROACH,
   SINGAPORE_MALACCA_APPROACH,
   SUEZ_CANAL_APPROACHES,
+  LAX_CARGO_AIR,
+  EL_PASO_BORDER_CROSSINGS,
 ];
 
 export function getChokepoint(id: string): ChokepointProfile | undefined {
