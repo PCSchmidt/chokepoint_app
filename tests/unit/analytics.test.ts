@@ -305,7 +305,7 @@ describe("vessel count (§7.1, reviewed geometry)", () => {
     ];
     const m = vesselCount(observations, {
       ...BASE,
-      fence: anchorage,
+      fences: [anchorage],
     });
     expect(m.value).toBe(2);
     expect(m.metricType).toBe("vessel_count");
@@ -319,7 +319,7 @@ describe("vessel count (§7.1, reviewed geometry)", () => {
       synth("vc-4", 33.68, -118.17, 0),   // inside
       synth("vc-5", 33.30, -118.10, 10),  // far south, outside
     ];
-    const m = vesselCount(observations, { ...BASE, fence: anchorage });
+    const m = vesselCount(observations, { ...BASE, fences: [anchorage] });
     expect(m.value).toBe(1);
   });
 
@@ -329,13 +329,13 @@ describe("vessel count (§7.1, reviewed geometry)", () => {
       ...unknownVessel,
       quality: { ...unknownVessel.quality, classification: "unknown" },
     };
-    const m = vesselCount([unclassified], { ...BASE, fence: anchorage });
+    const m = vesselCount([unclassified], { ...BASE, fences: [anchorage] });
     expect(m.value).toBe(0);
     expect(m.quality.coverageNote).toMatch(/1 unclassified entity\(ies\) excluded/);
   });
 
   it("empty in-fence population returns UNKNOWN, not zero-confidence counts", () => {
-    const m = vesselCount([synth("vc-7", 33.30, -118.10, 0)], { ...BASE, fence: anchorage });
+    const m = vesselCount([synth("vc-7", 33.30, -118.10, 0)], { ...BASE, fences: [anchorage] });
     expect(m.value).toBe(0);
     expect(m.quality.state).toBe("unknown");
   });
@@ -343,7 +343,7 @@ describe("vessel count (§7.1, reviewed geometry)", () => {
   it("works against the other regional fences too (registry-driven, not hardcoded)", () => {
     const suez = reviewedFence("gulf-of-suez-approach");
     // Inside the Gulf of Suez envelope (lat ~29.6-29.93, lon ~32.4-32.6).
-    const m = vesselCount([synth("vc-8", 29.75, 32.50, 0)], { ...BASE, fence: suez });
+    const m = vesselCount([synth("vc-8", 29.75, 32.50, 0)], { ...BASE, fences: [suez] });
     expect(m.value).toBe(1);
   });
 });

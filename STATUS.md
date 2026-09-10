@@ -3,7 +3,7 @@
 This file records measured progress and known limitations, not optimistic
 completion claims. Claims here must match the repository.
 
-**Phase 0 complete. Phase 1 complete. Phase 2 COMPLETE (incl. §12.6 evaluation report and the live AISStream adapter — live data flows behind the server-side key; UI rendering remains Phase 3).**
+**Phase 0–2 complete. Phase 3 (Cesium product surface) IN PROGRESS: keyless globe + full investigation UI built and tested in fixture mode.**
 
 ## Actually built (Phase 0/1)
 
@@ -42,6 +42,43 @@ completion claims. Claims here must match the repository.
 - `npm run dev/build/test/lint` scripts; GitHub Actions CI (lint + test + build
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
+
+## Phase 3: Cesium product surface (in progress)
+
+- **CesiumJS 1.145 integrated keyless** (ADR-0003, §4.1, §6.2): no ion token,
+  bundled Natural Earth II offline imagery as the default base layer, keyless
+  Esri/OSM stacks in a data-driven map-stack registry (each with required
+  attribution, §15). Runtime assets copied to /cesium/ (vite-plugin-static-copy).
+- **Working application, not a hero page (§9.3)**: mission launcher →
+  investigation (globe + freight HUD + event cards + timeline + evidence
+  drawer). Vanilla DOM over pure view models (§9.1: no framework).
+- **Freight HUD (§4.2)**: all six §7 component metrics as cards with the
+  §9.3 badge vocabulary (LIVE/DERIVED/ESTIMATE/SIM/STALE/UNKNOWN) and the SIM
+  badge always visible in fixture mode (§3.1). Baseline comparison lines under
+  the cards carry the named baseline window (§8.4 COMPARISON semantics).
+- **Mission launcher**: cards from the config registry (§4.3); Suez renders
+  "coverage UNKNOWN" per the §6.1 smoke evidence — never a fake empty live view.
+- **Timeline/replay**: deterministic controller (fixed-tick advance, no wall
+  clock); replay window = deterministic 30-min look-back; §12.5 determinism
+  tested (same steps → identical cursors; clamps at window end).
+- **Event cards (§2.2)**: bounded via the render governor; threshold-crossing
+  language only, with the comparison context line (§8.4).
+- **Evidence drawer (§4.5)**: metrics + formulas + comparisons + provenance +
+  profile limitations, assembled from data only (no causal text — tested).
+- **Share links (§11.2)**: URL-hash encoding of chokepoint/window/replay/
+  selections/overlays; no secrets by construction (tested); corrupt links
+  degrade to the launcher, never a half-broken state.
+- **Render governor (`render-governor-v1`, §12.5)**: bounded, deterministic
+  cohort selection with explicit budgets (800 points/40 labels/6 event cards)
+  and frame-stability checks — same input, same cohort, no flicker.
+- **Theme**: CSS custom properties per §9.3 (dark slate/navy, sea blue,
+  red reserved for degraded states); attribution bar always visible; §9.4
+  responsive grid prioritizes event cards + evidence on mobile.
+- **Browser-safe data path**: the manager accepts preloaded manifests
+  (import.meta.glob) so node:fs stays out of the browser bundle (dynamic
+  import only on the node path); the SIMULATED fixtures travel with the bundle.
+- 212 tests (unit + happy-dom UI render tests). Build: 4.2 MB bundle
+  (Cesium runtime; gzip ~1.1 MB), sourcemaps on.
 
 ## Live smoke evidence (first §6.1 coverage data, 2026-09-09)
 
@@ -206,8 +243,10 @@ completion claims. Claims here must match the repository.
 - **Phase 2 remainder** — baseline comparison, event detector + §12.3
   detector metrics, evaluation report. Component metrics (tracks,
   classification, moving fraction, dwell, vessel count, entry/exit) are done.
-- **Phase 3** — Cesium globe, freight HUD, mission launcher, timeline/replay,
-  evidence drawer, share-link state, health-state rendering.
+- **Phase 3 remainder** — browser QA (Playwright, §12.5 budgets), replay
+  performance profiling, watchlist surface, PWA polish. The core investigation
+  UI, globe, launcher, HUD, timeline, event cards, evidence drawer, share
+  links, and responsive layout are built (212 tests).
 - **Phase 4** — agent/evaluator layer and voice (Decision 2, §19).
 - **Phase 5** — Docker, Prometheus/Grafana, extended observability.
 

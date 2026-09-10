@@ -16,3 +16,4 @@ export * from "./fixtureAdapter";
 export * from "./geofences";
 export * from "./ais";
 export * from "./aisStreamAdapter";
+export * from "./manager";

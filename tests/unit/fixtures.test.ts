@@ -5,11 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import * as path from "node:path";
-import {
-  loadFixtureDirectory,
-  parseFixture,
-  REQUIRED_FIXTURE_TRUTH_STATE,
-} from "../../src/data/fixtureLoader";
+import { parseFixture, REQUIRED_FIXTURE_TRUTH_STATE } from "../../src/data/fixtureLoader";
+import { loadFixtureDirectory } from "../../src/data/fixtureLoader.node";
 import { dedupeObservations } from "../../src/data/observation";
 
 const fixturesDir = path.resolve("tests/fixtures");

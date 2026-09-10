@@ -198,8 +198,8 @@ export function movingFraction(
 // ---------------------------------------------------------------------------
 
 export interface VesselCountOptions extends MetricBaseOptions {
-  /** A registered reviewed geofence (placeholder/candidate throws, ADR-0007). */
-  fence: ReviewedGeofence;
+  /** Reviewed geofence(s); membership = inside ANY of them (placeholder/candidate throws, ADR-0007). */
+  fences: readonly ReviewedGeofence[];
   /** Classification allowlist (§7.1). Defaults to the maritime freight set. */
   classificationAllowlist?: readonly EntityType[] | undefined;
 }
@@ -211,13 +211,14 @@ export interface VesselCountOptions extends MetricBaseOptions {
  * reliable classification are excluded from the count and reported as
  * UNCLASSIFIED in the coverage note (§3.3) — never silently dropped.
  *
- * UI language contract: this is "observed vessels in the defined geofence",
+ * UI language contract: this is "observed vessels in the defined geofence(s)",
  * never "all vessels at the port".
  */
 export function vesselCount(
   observations: readonly TransportObservation[],
   options: VesselCountOptions,
 ): DerivedMetric {
+  if (options.fences.length === 0) throw new Error("vesselCount requires at least one reviewed fence");
   const allowlist = options.classificationAllowlist ?? FREIGHT_ENTITY_TYPES;
   const byEntity = new Map<string, TransportObservation[]>();
   for (const o of sortedCopy(observations)) {
@@ -235,8 +236,8 @@ export function vesselCount(
 
   for (const entityId of [...byEntity.keys()].sort()) {
     const records = byEntity.get(entityId)!;
-    const inside = records.some(
-      (o) => geofenceMembership(options.fence, o.position.latitude, o.position.longitude).inside
+    const inside = records.some((o) =>
+      options.fences.some((f) => geofenceMembership(f, o.position.latitude, o.position.longitude).inside)
     );
     if (!inside) continue;
     for (const o of records) inputs.add(o.observationId);
@@ -249,9 +250,10 @@ export function vesselCount(
     else outsideAllowlist += 1;
   }
 
-  const scope = `geofence:${options.fence.id}@${options.fence.geometryVersion}`;
+  const fenceLabel = options.fences.map((f) => `${f.id}@${f.geometryVersion}`).join("+");
+  const scope = `geofence:${fenceLabel}`;
   const coverageParts = [
-    `observed vessels in the defined geofence ${options.fence.id} (v${options.fence.geometryVersion})`,
+    `observed vessels in the defined geofence(s) ${fenceLabel}`,
     `${unclassified} unclassified entity(ies) excluded from type-specific totals (§3.3)`,
     `${outsideAllowlist} entity(ies) outside the classification allowlist (visible context only)`,
   ];

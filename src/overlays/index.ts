@@ -1,9 +1,6 @@
 /**
- * Overlays module boundary (CHOKEPOINT-PLAN.md §9.2).
- *
- * World overlay, vessel/event cards, evidence overlay: Phase 3 (deferred).
- * Intentionally empty in Phase 0/1: implementation arrives in a later phase.
- * This file exists only to pin the module boundary.
+ * Overlays module boundary (§9.2): event cards; vessel cards and density are
+ * part of the globe layer for v1 (bounded by the render governor).
  */
 
-export {};
+export * from "./eventCards";

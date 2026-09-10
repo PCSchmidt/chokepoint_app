@@ -9,8 +9,6 @@
  * credentials are read anywhere in this module.
  */
 
-import { readFile, readdir } from "node:fs/promises";
-import * as path from "node:path";
 import {
   normalizeObservation,
   type NormalizationResult,
@@ -110,26 +108,4 @@ export function parseFixture(raw: unknown): LoadedFixture {
     observations: accepted,
     rejected,
   };
-}
-
-/** Load a single fixture file from disk. */
-export async function loadFixtureFile(filePath: string): Promise<LoadedFixture> {
-  const text = await readFile(filePath, "utf-8");
-  return parseFixture(JSON.parse(text));
-}
-
-/**
- * Load every *.json fixture in a directory (non-recursive). Files that do not
- * parse or fail the simulated-provenance guard throw — a broken fixture is a
- * build problem, not a silent data gap.
- */
-export async function loadFixtureDirectory(dirPath: string): Promise<FixtureDirectoryResult> {
-  const files = (await readdir(dirPath))
-    .filter((f) => f.endsWith(".json"))
-    .sort();
-  const fixtures: LoadedFixture[] = [];
-  for (const file of files) {
-    fixtures.push(await loadFixtureFile(path.join(dirPath, file)));
-  }
-  return { fixtures, files };
 }
