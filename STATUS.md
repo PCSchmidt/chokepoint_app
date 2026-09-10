@@ -43,6 +43,24 @@ completion claims. Claims here must match the repository.
   on push).
 - Keyless guarantee: no code path reads a provider credential (§6.2, §16.1).
 
+## Phase 3 visual QA milestone: satellite basemap + verified on-canvas rendering
+
+- **Default map stack switched to keyless Esri World Imagery** (user decision,
+  best available resolution without credentials); offline Natural Earth II
+  remains the automatic no-network fallback (§6.2). Both stay keyless.
+- **Pixel-based visibility assertion** (`npm run qa:browser`): the QA projects
+  every vessel point to screen coordinates and samples the WebGL canvas —
+  29/29 points render their color. (drillPick misses ground-clamped points;
+  pixels are authoritative. `preserveDrawingBuffer` was required for honest
+  screenshots — without it, WebGL composites blank post-frame.)
+- Fixed on the way: `showObservations` wiped fence entities each frame
+  (fences now survive); oblique (-45°) camera framing landed the visible
+  center height*tan(45°) off the fence — framing is now top-down with the
+  destination as the frame center; fence boundaries render as polylines
+  (Cesium surface-polygon outlines are unsupported in browsers).
+- Both chokepoints verified: LB 11 vessels, Singapore 7, satellite imagery,
+  fence outlines visible, 0 console/page errors. 213 tests.
+
 ## Phase 3 QA milestone: both chokepoints verified rendering in-browser
 
 - Playwright e2e (`npm run qa:browser`) asserts the full flow: launcher ->
