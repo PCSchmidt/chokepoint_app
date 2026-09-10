@@ -3,8 +3,7 @@
 This file records measured progress and known limitations, not optimistic
 completion claims. Claims here must match the repository.
 
-**Phase 0–3 complete: keyless globe, full investigation UI, watchlist, measured
-replay performance, and PWA offline shell — all fixture-mode, 233 tests.**
+**Phases 0–3 complete. Phase 4 (verified agent) COMPLETE in deterministic fixture mode: typed intents, deterministic tools, evidence bundles, claim evaluator, text query surface, groundedness report 19/19. No LLM/voice — those are the deferred Phase 4 remainder.**
 
 ## Phase 3 CLOSE-OUT (2026-09-10): watchlist, measured budgets, PWA
 
@@ -41,6 +40,50 @@ replay performance, and PWA offline shell — all fixture-mode, 233 tests.**
 - Phase 3 exit criteria now all met: core investigation without voice;
   deterministic replay; browser performance measured within documented
   budgets; attribution visible in all views.
+
+## Phase 4: verified agent (deterministic core, 2026-09-10)
+
+- **Typed query intents** (`src/agent/intent.ts`, §4.4): a deterministic
+  closed-vocabulary parser maps a question onto the §4.4 tool allowlist
+  (count_vessels, summarize_chokepoint, compare_with_baseline,
+  list_recent_changes, explain_metric wired; replay/focus/cohort controls
+  reserved for UI actions). Unmatched questions ABSTAIN with a reason — the
+  parser never infers scope; relative windows resolve against data
+  availability, never the wall clock.
+- **Deterministic data tools** (`src/agent/tools.ts`, §8.1/§8.2): the ONLY
+  agent data path is manager snapshots. Claims are typed
+  (OBSERVATION/CALCULATION/COMPARISON/QUALITY/LIMITATION) and every claim
+  cites a metric/event/comparison id. A zero count over zero observations is
+  emitted as "coverage unknown, not zero" (§3.3/§7.1) — never "no activity".
+- **Evidence bundle builder** (`src/agent/evidenceBundle.ts`, §5.6): content-
+  addressed bundleId (FNV-1a of question+scope — no clock), normalized
+  intent, windowed observation references, tool claims, source health, and
+  schema/tool versions. Abstentions are first-class.
+- **Claim evaluator** (`src/agent/evaluator.ts`, §8.3–8.5,
+  `claim-evaluator-v1`): deterministic gates — banned causal/threat/
+  prediction/intent/identity language, provenance-required, "all vessels at
+  the port" scope overreach rejected, EVERY number must match a referenced
+  metric value, freshness/coverage caveats required when material. Output is
+  the §8.5 verdict shape (accepted claim ids, rejected claims with reasons,
+  required caveats, evaluator version).
+- **Generator** (`src/agent/generator.ts`, §8.2): drafts answers ONLY from
+  the accepted portion of an evaluated bundle; the evaluator cannot be
+  bypassed (the generator accepts a verdict object, not raw claims).
+  Deterministic template assembly in fixture mode — an LLM can later replace
+  the wording without changing the contract.
+- **Text query surface** (`src/ui/agentPanel.ts`): question box in the
+  investigation view; EVALUATED/NOT ANSWERED badge, caveats, and rejected-
+  claim transparency rendered (never silently dropped).
+- **Groundedness evaluation** (`npm run eval:agent`, §12.4/§12.6): 19 labeled
+  scenarios — numeric accuracy, provenance coverage, scope-mismatch
+  rejection, banned-language rejection (THREAT/CAUSE/PREDICTION/INTENT),
+  derived-vs-observed labeling, abstention quality. **19/19 PASS**
+  (`evaluation-reports/agent-2026-09-10.md`). 15 vitest scenarios assert the
+  same rules in CI.
+- Phase 4 exit criteria met for the text surface: unsupported claims are
+  rejected or caveated; numeric answers match deterministic metrics; provider
+  failure renders honest UNKNOWN (no fabricated answers). Voice remains
+  deferred by Decision 2.
 
 ## Actually built (Phase 0/1)
 

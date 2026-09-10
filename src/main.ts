@@ -34,6 +34,8 @@ import { renderFreightHud } from "./ui/freightHud";
 import { renderEventCards } from "./overlays/eventCards";
 import { renderEvidenceDrawer } from "./ui/evidenceDrawer";
 import { renderWatchlistSaveForm, renderWatchlistPanel, type WatchlistSaveSelection } from "./ui/watchlist";
+import { renderAgentPanel, renderAgentAnswer, type AgentAnswerView } from "./ui/agentPanel";
+import { askAgent } from "./agent/pipeline";
 import {
   loadWatchlist,
   saveWatchlist,
@@ -229,6 +231,27 @@ function reviewedRings(chokepointId: string): Array<{ id: string; ring: PolygonR
     .filter((r): r is { id: string; ring: PolygonRing } => r !== null);
 }
 
+/**
+ * Agent turn (§8): question -> deterministic tools -> evidence bundle ->
+ * evaluator -> caveated answer. The wall clock is not read: the window is
+ * the current investigation state.
+ */
+async function handleAgentQuestion(question: string): Promise<void> {
+  const snapshot = state.get();
+  const answerEl = required("#agent");
+  const { answer } = await askAgent(question, manager, {
+    chokepointId: snapshot.chokepointId,
+    window: snapshot.timeWindow,
+  });
+  renderAgentAnswer(answerEl, {
+    text: answer.text,
+    caveats: answer.caveats,
+    rejected: answer.rejected,
+    evidenceRefs: answer.evidenceRefs,
+    verdict: answer.verdict,
+  } satisfies AgentAnswerView);
+}
+
 function persistWatchlist(): void {
   saveWatchlist(watchEntries, window.localStorage);
 }
@@ -303,6 +326,7 @@ function mountInvestigationShell(): void {
       <aside class="left-rail">
         <button id="back-to-launcher" data-testid="back-to-launcher">← All chokepoints</button>
         <div id="watch-save" class="watch-save-slot"></div>
+        <div id="agent" class="agent-slot"></div>
         <div id="hud" class="hud"></div>
         <div id="event-cards" class="event-cards"></div>
       </aside>
@@ -320,9 +344,12 @@ function mountInvestigationShell(): void {
   required("#back-to-launcher").addEventListener("click", () => {
     state.update({ chokepointId: null, timeWindow: null });
   });
-  // The save form depends only on the profile — render once at mount so the
-  // details element keeps its open/closed state across replay ticks.
+  // The save form and agent panel depend only on the profile — render once at
+  // mount so the details elements keep their open state across replay ticks.
   renderWatchlistSaveForm(required("#watch-save"), manager.listChokepoints().find((c) => c.id === state.get().chokepointId)?.name ?? "chokepoint", addWatch);
+  renderAgentPanel(required("#agent"), (question) => {
+    void handleAgentQuestion(question);
+  });
 }
 
 function openInvestigation(snapshot: AppStateSnapshot): void {

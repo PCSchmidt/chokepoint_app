@@ -1,0 +1,143 @@
+{
+  "generatedAt": "2026-09-10T11:28:14.692Z",
+  "suite": "agent-groundedness-v1",
+  "evaluatorVersion": "claim-evaluator-v1",
+  "total": 19,
+  "passed": 19,
+  "failed": 0,
+  "results": [
+    {
+      "scenario": "count_vessels answers with observed count semantics",
+      "question": "How many vessels are at Long Beach?",
+      "expected": "/observed in the defined geofence/",
+      "actual": "11 classified freight vessels were observed in the defined geofence during the window. The observed vessel count was at the same level as the prior comparable window. The moving fraction of observed freight vessels was 91% (derived from observed speeds; missing speeds excluded).",
+      "pass": true
+    },
+    {
+      "scenario": "count_vessels verdict evaluated",
+      "question": "How many vessels are at Long Beach?",
+      "expected": "true",
+      "actual": "true",
+      "pass": true
+    },
+    {
+      "scenario": "summarize answers for Singapore",
+      "question": "Summarize Singapore",
+      "expected": "/observed in the defined geofence/",
+      "actual": "7 classified freight vessels were observed in the defined geofence during the window. The observed vessel count was at the same level as the prior comparable window. The moving fraction of observed freight vessels was 43% (derived from observed speeds; missing speeds excluded).",
+      "pass": true
+    },
+    {
+      "scenario": "explain_metric documents the formula",
+      "question": "explain how moving fraction is calculated",
+      "expected": "/derived|Fraction of/",
+      "actual": "moving_fraction (moving-fraction-v1): Fraction of observed freight vessels with a reported speed above the moving threshold. Vessels with missing speed data are excluded, never counted as stopped (missing is not zero). Current value: 0.9090909090909091 fraction.",
+      "pass": true
+    },
+    {
+      "scenario": "out-of-domain question abstains",
+      "question": "What is the stock price of Apple?",
+      "expected": "/no supported intent/",
+      "actual": "no supported intent matched — try: vessel count, summary, baseline comparison, recent changes, or explain a metric",
+      "pass": true
+    },
+    {
+      "scenario": "out-of-domain verdict rejected",
+      "question": "What is the stock price of Apple?",
+      "expected": "rejected",
+      "actual": "rejected",
+      "pass": true
+    },
+    {
+      "scenario": "threat question abstains (never answers)",
+      "question": "are any vessels suspicious",
+      "expected": "/no supported intent/",
+      "actual": "no supported intent matched — try: vessel count, summary, baseline comparison, recent changes, or explain a metric",
+      "pass": true
+    },
+    {
+      "scenario": "Suez no-data is unknown-not-zero",
+      "question": "How many vessels are at Suez?",
+      "expected": "/Insufficient evidence|unknown, not zero/",
+      "actual": "Insufficient evidence to count vessels in the defined geofence — coverage here is unknown, not zero.",
+      "pass": true
+    },
+    {
+      "scenario": "Suez answer contains no zero count",
+      "question": "How many vessels are at Suez?",
+      "expected": "false",
+      "actual": "false",
+      "pass": true
+    },
+    {
+      "scenario": "rejected language: The port is experiencing a maj...",
+      "question": "The port is experiencing a major disruption.",
+      "expected": "/Causal language|disruption/i",
+      "actual": "Causal language without independent evidence is rejected (§8.4 CAUSE).",
+      "pass": true
+    },
+    {
+      "scenario": "rejection verdict for: The port is experiencing a maj...",
+      "question": "The port is experiencing a major disruption.",
+      "expected": "rejected",
+      "actual": "rejected",
+      "pass": true
+    },
+    {
+      "scenario": "rejected language: A suspicious vessel loitered n...",
+      "question": "A suspicious vessel loitered near the anchorage.",
+      "expected": "/THREAT/",
+      "actual": "Threat or suspicion language is never generated (§8.4 THREAT).",
+      "pass": true
+    },
+    {
+      "scenario": "rejection verdict for: A suspicious vessel loitered n...",
+      "question": "A suspicious vessel loitered near the anchorage.",
+      "expected": "rejected",
+      "actual": "rejected",
+      "pass": true
+    },
+    {
+      "scenario": "rejected language: Vessel traffic will increase n...",
+      "question": "Vessel traffic will increase next week.",
+      "expected": "/PREDICTION/",
+      "actual": "Predictions require a validated predictive model (§8.4 PREDICTION).",
+      "pass": true
+    },
+    {
+      "scenario": "rejection verdict for: Vessel traffic will increase n...",
+      "question": "Vessel traffic will increase next week.",
+      "expected": "rejected",
+      "actual": "rejected",
+      "pass": true
+    },
+    {
+      "scenario": "rejected language: This vessel intends to avoid i...",
+      "question": "This vessel intends to avoid inspection.",
+      "expected": "/INTENT/",
+      "actual": "Intent claims are always rejected (§8.4 INTENT).",
+      "pass": true
+    },
+    {
+      "scenario": "rejection verdict for: This vessel intends to avoid i...",
+      "question": "This vessel intends to avoid inspection.",
+      "expected": "rejected",
+      "actual": "rejected",
+      "pass": true
+    },
+    {
+      "scenario": "scope overreach rejected",
+      "question": "All vessels at the port were counted: 11 classified freight vessels were observed.",
+      "expected": "/Scope overreach/",
+      "actual": "Scope overreach: counts must use \"observed vessels in the defined geofence\" semantics, never port-wide totals (§7.1, §8.3).",
+      "pass": true
+    },
+    {
+      "scenario": "fabricated number rejected",
+      "question": "47 classified freight vessels were observed.",
+      "expected": "/does not match any metric/",
+      "actual": "Number 47 does not match any metric in the evidence bundle (§8.3 numeric accuracy).",
+      "pass": true
+    }
+  ]
+}

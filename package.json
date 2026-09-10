@@ -16,7 +16,8 @@
     "qa:browser": "tsx scripts/qa-browser.ts",
     "smoke": "tsx scripts/aisstream-smoke.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval:agent": "tsx scripts/run-agent-evaluation.ts"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
