@@ -432,6 +432,17 @@ completion claims. Claims here must match the repository.
 - Rendering of health states (Phase 1 criterion "render correctly") waits for
   the Phase 3 UI; the machine and statuses are implemented and tested.
 
+## Phase 6 decision (2026-09-10): hold, beta on the static fixture build
+
+- `docs/phase6-beta-decision.md` evaluates the six §17 Phase 6 questions
+  against measured evidence. Decision: **hold on data purchase, durable
+  infrastructure, and native mobile**; run a limited beta by publishing the
+  static fixture-mode build and observing §17 Q1–Q3. Documented triggers
+  (first-use sessions, live-data validation, alert-driven return visits)
+  would reopen each deferred path. The two user-facing questions
+  (understanding without explanation; evidence-drawer trust) are honestly
+  marked unanswerable without observed first-use.
+
 ## Deliberately deferred (per §17 roadmap)
 
 - **Phase 2 remainder** — baseline comparison, event detector + §12.3

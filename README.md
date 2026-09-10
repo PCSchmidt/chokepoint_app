@@ -78,6 +78,7 @@ gitignored `.env`): `npm run smoke`.
 - `SECURITY.md` — secrets, proxy, and privacy rules
 - `STATUS.md` — measured progress log
 - `docs/case-study.md` — the product story with measured results
+- `docs/phase6-beta-decision.md` — the Phase 6 public-beta decision memo
 - `docs/decisions/` — architecture decision records (ADRs)
 - `research/` — candidate-geometry and provider-terms research (pre-decision)
 
