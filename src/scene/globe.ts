@@ -17,10 +17,25 @@ import * as Cesium from "cesium";
 if (typeof window !== "undefined" && !window.CESIUM_BASE_URL) {
   (window as unknown as { CESIUM_BASE_URL: string }).CESIUM_BASE_URL = "/cesium/";
 }
-import { frameForRing, type CameraFrame } from "./camera";
+import { frameForRing, frameForPoints, type CameraFrame, type GeoPoint } from "./camera";
+import { drawNodeSprite, pulsePixelSize, rotatePattern } from "./nodeEffects";
 import { getMapStack, DEFAULT_MAP_STACK, type MapStackId } from "./mapStack";
 import type { PolygonRing } from "../config/chokepoints";
+import type { RouteArc } from "../config/routes";
 import type { TransportObservation } from "../data/observation";
+
+/** A chokepoint's network-node presentation state (main.ts computes; globe draws). */
+export interface NodeMarker {
+  id: string;
+  name: string;
+  anchor: [number, number];
+  /** Headline line, e.g. "11 vessels" or "12 min wait". */
+  headline: string;
+  /** §9.3 badge vocabulary; drives sprite border color. */
+  badge: string;
+  /** Waiting-cohort size; > 0 enables the pulse ring (P4). */
+  cohort: number;
+}
 
 export interface FreightGlobe {
   viewer: Cesium.Viewer;
@@ -30,6 +45,44 @@ export interface FreightGlobe {
   showObservations(observations: readonly TransportObservation[], selectedEntityId?: string | null): void;
   /** Draw reviewed fence outlines (always visible; they are the measurement region). */
   showFences(rings: ReadonlyArray<{ id: string; ring: PolygonRing; label: string }>): void;
+  /**
+   * Draw illustrative corridor arcs (NETWORK-VIEW-PLAN.md Phase 1): dashed
+   * geodesic polylines, one per declared leg. A UI AFFORDANCE, not a claim —
+   * each arc tooltip states "illustrative corridor, not a tracked vessel
+   * path". Callers pass fully-formed ids; ids must NOT contain "@" (the
+   * observation-removal heuristic keys on it).
+   */
+  showRoutes(arcs: ReadonlyArray<RouteArc>): void;
+  /**
+   * Idempotent overlay clear: removes fence and route entities by id prefix,
+   * leaving observation point entities (ids contain "@") untouched. Called
+   * before any fence/route redraw so overlays never accumulate.
+   */
+  clearOverlays(): void;
+  /** Frame a set of points (the network view landing frame). */
+  frameAll(points: readonly GeoPoint[], padding?: number): CameraFrame;
+  /**
+   * Cinematic boot (NETWORK-VIEW-PLAN.md Phase 1.5 P1): set the camera high
+   * above the network, then one fixed-duration settle flight to the working
+   * frame. Deterministic durations; no wall clock in the DATA path (§12.5) —
+   * this only moves the CAMERA at boot.
+   */
+  bootFlyIn(points: readonly GeoPoint[]): CameraFrame;
+  /**
+   * Node status markers (Phase 1.5 P2): one labeled billboard per chokepoint,
+   * colored by its §9.3 badge, plus a dwell-cohort pulse (P4). Replaces prior
+   * node entities (ids prefixed "node-"/"pulse-", never containing "@").
+   */
+  showNodeMarkers(markers: ReadonlyArray<NodeMarker>): void;
+  /** Click callback for node markers (transactional: fires only on pick). */
+  onNodeClick(handler: ((chokepointId: string) => void) | null): void;
+  /**
+   * Corridor flow animation (P3): the arcs' dash pattern advances with the
+   * viewer clock — which only advances on actual renders under
+   * requestRenderMode, so arcs "flow" during replay/scrub and freeze when
+   * idle. active=false renders a static dash.
+   */
+  setRouteFlow(active: boolean): void;
   /**
    * Visibility truth test (QA): project point entities to window coordinates
    * and drill-pick. An entity that picks at its own position IS rendered.
@@ -101,6 +154,27 @@ export function createFreightGlobe(
     baseLayer: new Cesium.ImageryLayer(baseLayerFor(mapStackId)),
   });
   viewer.creditDisplay.addStaticCredit(new Cesium.Credit(descriptor.attributionText));
+
+  // Route-flow state (P3): active during replay; the dash pattern advances
+  // with the viewer clock (renders happen only on request under
+  // requestRenderMode, so the flow is render-driven, never wall-clock-driven).
+  let routeFlowActive = false;
+  let flowOffset = 0;
+  let lastFlowSeconds: number | null = null;
+  // Node click handler (P2): transactional pick -> callback (§8.6).
+  let nodeClickHandler: ((chokepointId: string) => void) | null = null;
+  const clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  clickHandler.setInputAction((click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => {
+    if (!nodeClickHandler) return;
+    const picked = viewer.scene.drillPick(click.position, 3);
+    for (const p of picked) {
+      const id = p?.id !== undefined ? String(p.id) : "";
+      if (id.startsWith("node-")) {
+        nodeClickHandler(id.slice("node-".length));
+        return;
+      }
+    }
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
   return {
     viewer,
@@ -185,6 +259,172 @@ export function createFreightGlobe(
       return { total: pointEntities.length, picked: pickedCount, sample };
     },
 
+    frameAll(points, padding = 1.15) {
+      const frame = frameForPoints(points, padding);
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(frame.longitude, frame.latitude, frame.heightMeters),
+        orientation: {
+          heading: Cesium.Math.toRadians(frame.headingDegrees),
+          pitch: Cesium.Math.toRadians(frame.pitchDegrees),
+          roll: 0,
+        },
+      });
+      return frame;
+    },
+
+    bootFlyIn(points) {
+      const frame = frameForPoints(points, 1.15);
+      const orientation = {
+        heading: Cesium.Math.toRadians(frame.headingDegrees),
+        pitch: Cesium.Math.toRadians(frame.pitchDegrees),
+        roll: 0,
+      };
+      // Start altitude: 1.6x the working frame, capped well below orbital
+      // distances — higher starts overflow Cesium's frustum-array math
+      // (RangeError in updateFrustums) when the network spans the globe.
+      const bootHeight = Math.min(frame.heightMeters * 1.6, 2_000_000);
+      viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(frame.longitude, frame.latitude, bootHeight),
+        orientation,
+      });
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(frame.longitude, frame.latitude, frame.heightMeters),
+        orientation,
+        duration: 2.5,
+      });
+      return frame;
+    },
+
+    showNodeMarkers(markers) {
+      // Replace node + pulse entities; idempotent (prefix-based, never "@").
+      const toRemove = viewer.entities.values.filter(
+        (e) =>
+          typeof e.id === "string" &&
+          (e.id.startsWith("node-") || e.id.startsWith("pulse-")),
+      );
+      for (const entity of toRemove) viewer.entities.remove(entity);
+      for (const m of markers) {
+        viewer.entities.add({
+          id: `node-${m.id}`,
+          position: Cesium.Cartesian3.fromDegrees(m.anchor[1], m.anchor[0], 0),
+          // P2: labeled status sprite — canvas-drawn, no new deps.
+          billboard: {
+            image: drawNodeSprite(m),
+            scale: 1,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            sizeInMeters: false,
+          },
+        });
+        // P4: waiting-cohort pulse — size oscillates with the viewer clock
+        // (render-driven under requestRenderMode; frozen when idle). The
+        // ring marks WHERE vessels wait; it claims nothing about motion.
+        // Render-property constraints (bisected via QA probes):
+        //  - outlineWidth MUST be 0: with an outline, PointVisualizer renders
+        //    the point as a billboard whose texture id embeds the pixel size —
+        //    an animated pixelSize then queues a NEW atlas texture every frame
+        //    (width-0 churn -> repeated render-loop errors).
+        //  - disableDepthTestDistance MUST NOT be Infinity on the pulse: it
+        //    collapses the near plane to 0, far/near -> Infinity, and the
+        //    multi-frustum split overflows (RangeError, rendering stops).
+        // The pulse is a large translucent surface ring; depth testing is fine.
+        if (m.cohort !== 0) {
+          const animated = m.cohort > 0;
+          const cohort = Math.abs(m.cohort);
+          viewer.entities.add({
+            id: `pulse-${m.id}`,
+            position: Cesium.Cartesian3.fromDegrees(m.anchor[1], m.anchor[0], 0),
+            point: {
+              pixelSize: animated
+                ? new Cesium.CallbackProperty(
+                    (time) => pulsePixelSize(cohort, time ?? viewer.clock.currentTime),
+                    false,
+                  )
+                : 22,
+              color: Cesium.Color.fromCssColorString("#f59e0b").withAlpha(0.28),
+              outlineWidth: 0,
+              heightReference: Cesium.HeightReference.NONE,
+            },
+          });
+        }
+      }
+      viewer.scene.requestRender();
+    },
+
+    onNodeClick(handler) {
+      nodeClickHandler = handler;
+    },
+
+    setRouteFlow(active) {
+      routeFlowActive = active;
+      viewer.scene.requestRender();
+    },
+
+    showRoutes(arcs: ReadonlyArray<RouteArc>) {
+      for (const arc of arcs) {
+        const arcPositions: Cesium.Cartesian3[] = Cesium.Cartesian3.fromDegreesArray([
+          arc.from[1],
+          arc.from[0],
+          arc.to[1],
+          arc.to[0],
+        ]);
+        const dashMaterial = new Cesium.PolylineDashMaterialProperty({
+          color: Cesium.Color.fromCssColorString("#f59e0b").withAlpha(0.55),
+          dashLength: 16,
+          // P3: the dash runner advances ONLY while flow is active and only
+          // from viewer-clock deltas — under requestRenderMode this means the
+          // corridor "flows" during replay/scrub renders and freezes when
+          // idle (§12.5: no wall clock in the render path).
+          dashPattern: new Cesium.CallbackProperty((time) => {
+            const t = (time ?? viewer.clock.currentTime) as unknown as {
+              julianDateNumber: number;
+              secondsOfDay: number;
+            };
+            const seconds = t.julianDateNumber * 86400 + t.secondsOfDay;
+            if (routeFlowActive) {
+              if (lastFlowSeconds !== null) {
+                flowOffset = (flowOffset + Math.max(0, seconds - lastFlowSeconds)) % 16;
+              }
+            }
+            lastFlowSeconds = seconds;
+            return rotatePattern(0x00ff, Math.floor(flowOffset));
+          }, false),
+        });
+        viewer.entities.add({
+          id: `route-${arc.id}`,
+          // Affordance label, not a claim: the arc is illustrative corridor
+          // art between reviewed fence anchors (§3.1 — never a DERIVED badge).
+          // description lives on the ENTITY (PolylineGraphics options have no
+          // description field — nesting it there breaks TS union resolution).
+          description: `<table>
+            <tr><td>corridor</td><td>${arc.fromId} ↔ ${arc.toId}</td></tr>
+            <tr><td>note</td><td>illustrative corridor — NOT a tracked vessel path</td></tr>
+          </table>`,
+          polyline: {
+            positions: arcPositions,
+            width: 1.5,
+            material: dashMaterial,
+            clampToGround: false,
+          },
+        });
+      }
+      viewer.scene.requestRender();
+    },
+
+    clearOverlays() {
+      const toRemove = viewer.entities.values.filter(
+        (e) =>
+          typeof e.id === "string" &&
+          (e.id.startsWith("fence-") ||
+            e.id.startsWith("route-") ||
+            e.id.startsWith("node-") ||
+            e.id.startsWith("pulse-")),
+      );
+      for (const entity of toRemove) viewer.entities.remove(entity);
+      viewer.scene.requestRender();
+    },
+
     showFences(rings) {
       for (const { id, ring } of rings) {
         const positions = Cesium.Cartesian3.fromDegreesArray(ring.flatMap(([lat, lon]) => [lon, lat]));
@@ -212,6 +452,7 @@ export function createFreightGlobe(
       viewer.scene.requestRender();
     },
     destroy() {
+      clickHandler.destroy();
       viewer.destroy();
     },
   };

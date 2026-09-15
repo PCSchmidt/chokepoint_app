@@ -127,6 +127,13 @@ export interface DataManager {
   /** Deterministic default window from the fixture timeline. */
   defaultWindow(): { startAt: string; endAt: string };
   getSnapshot(chokepointId: string, window: { startAt: string; endAt: string }): ChokepointSnapshot;
+  /**
+   * One snapshot per registry profile (NETWORK-VIEW-PLAN.md Phase 1 step 3).
+   * Synchronous: getSnapshot is a pure per-call function, so a plain loop is
+   * correct — no Promise. One computation is shared by the compare table,
+   * watchlist, and focus rail. Registry order is deterministic.
+   */
+  getAllSnapshots(window: { startAt: string; endAt: string }): ChokepointSnapshot[];
   /** Coarse live-coverage hint per fence from the §6.1 smoke evidence. */
   coverageHint(fenceId: string): "covered" | "unknown";
   destroy(): void;
@@ -221,6 +228,7 @@ export async function createDataManager(options: DataManagerOptions): Promise<Da
       };
     },
     coverageHint: (fenceId) => SMOKE_COVERAGE_HINTS[fenceId] ?? "unknown",
+    getAllSnapshots: (window) => CHOKEPOINT_REGISTRY.map((p) => manager.getSnapshot(p.id, window)),
     getSnapshot: (chokepointId, window) => {
       const profile = getChokepoint(chokepointId);
       if (!profile) throw new Error(`unknown chokepoint: ${chokepointId}`);

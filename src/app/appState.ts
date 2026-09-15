@@ -26,8 +26,8 @@ export interface TimeWindow {
 }
 
 export interface AppStateSnapshot {
-  /** Selected chokepoint (§4.3 id); null = mission launcher view. */
-  chokepointId: string | null;
+  /** Focused chokepoint (§4.3 id); null = network view (no row selected). */
+  focusChokepointId: string | null;
   timeWindow: TimeWindow | null;
   replay: ReplayState;
   selectedEventId: string | null;
@@ -42,7 +42,7 @@ export interface AppStateSnapshot {
 }
 
 export interface AppStatePatch {
-  chokepointId?: string | null;
+  focusChokepointId?: string | null;
   timeWindow?: TimeWindow | null;
   replay?: Partial<ReplayState>;
   selectedEventId?: string | null;
@@ -57,7 +57,7 @@ export const DEFAULT_REPLAY_SPEED = 60; // 1 real second = 60 replay seconds
 
 export function initialAppState(sourceMode: SourceMode = "fixture"): AppStateSnapshot {
   return {
-    chokepointId: null,
+    focusChokepointId: null,
     timeWindow: null,
     replay: { playing: false, cursor: null, speedMultiplier: DEFAULT_REPLAY_SPEED },
     selectedEventId: null,
@@ -80,16 +80,19 @@ export class AppState {
   }
 
   /**
-   * Apply a patch immutably. Selecting a chokepoint resets stale event/entity
+   * Apply a patch immutably. Changing the focus resets stale event/entity
    * selections (they belong to the previous investigation).
    */
   update(patch: AppStatePatch): AppStateSnapshot {
     const previous = this.snapshot;
     const switchedChokepoint =
-      patch.chokepointId !== undefined && patch.chokepointId !== previous.chokepointId;
+      patch.focusChokepointId !== undefined &&
+      patch.focusChokepointId !== previous.focusChokepointId;
     const next: AppStateSnapshot = {
       ...previous,
-      ...(patch.chokepointId !== undefined ? { chokepointId: patch.chokepointId } : {}),
+      ...(patch.focusChokepointId !== undefined
+        ? { focusChokepointId: patch.focusChokepointId }
+        : {}),
       ...(patch.timeWindow !== undefined ? { timeWindow: patch.timeWindow } : {}),
       replay: patch.replay ? { ...previous.replay, ...patch.replay } : previous.replay,
       ...(patch.selectedEventId !== undefined ? { selectedEventId: patch.selectedEventId } : {}),

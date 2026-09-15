@@ -622,3 +622,36 @@ land profile, each with placeholder geometry awaiting human review.**
 - **Phase 5** — Docker, Prometheus/Grafana, extended observability.
 
 No live provider integration and no LLM work exists in this repository.
+
+## Unified network view: Phase 1 complete, Phase 1.5 gated off (2026-09-15)
+
+- **Phase 1 (substrate) — BUILT**: all five profiles render on ONE globe
+  (per-profile prefixed fence/observation entity ids, ONE merged
+  `showObservations` call per refresh — sequential per-profile calls would
+  clobber via the `"@"`-removal heuristic), route arcs from a data-declared
+  leg list (`src/config/routes.ts`, illustrative tooltips), compare dashboard
+  with mode-sensitive headlines (land rows key on facility waits, not vessel
+  counts) and sparklines, `manager.getAllSnapshots()` shared by compare table/
+  watchlist/focus rail, `chokepointId` -> `focusChokepointId: string | null`
+  (null = network view; share links unchanged, `c=` absent = network view),
+  idempotent `clearOverlays()` (also fixes the latent agent
+  `focus_chokepoint` fence-accumulation bug), watchlist relocated to the
+  compare rail, launcher absorbed into `compareRows`. 341 tests green.
+- **Phase 1.5 (presence) — partially built**: P1 boot fly-in, P3 arc dash
+  rotation, and P6 story mode are in. P2 node sprite markers and P4
+  dwell-cohort pulse are IMPLEMENTED but OPT-IN (`?nodes`): they trigger a
+  Cesium render crash.
+- **OPEN BLOCKER — Cesium render crash with nodes+pulses**:
+  `RangeError: Failed to set the 'length' property on 'Array': Invalid array
+  length` at `View.createPotentiallyVisibleSet`/`updateFrustums` stops
+  rendering when node billboards and pulse ellipsoids are on screen
+  together. Probe evidence (pre-cleanup): nodes-only (`nopulse`) is
+  crash-free; nodes+pulses crashes in every mode tried (static pulse,
+  depth-test variants). Pulses-ONLY (plain billboards + pulses) was never
+  tested — that is the next bisect step, followed by NaN/Infinity guards on
+  marker anchors and pulse dimensions (classic non-finite bounding-volume
+  symptom). Static PNGs of the gated view: `research/qa/network-view.png`,
+  `research/qa/network-focused.png` (pre-crash captures).
+- **Deferred (per plan)**: multi-profile agent compare intents in
+  `agent/tools.ts` (single-scope `runTool` stays); broader intermodal
+  facility coverage.

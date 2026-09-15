@@ -1,11 +1,13 @@
 /**
- * Chokepoint application entry (CHOKEPOINT-PLAN.md §9.2, §9.3).
+ * Chokepoint application entry (CHOKEPOINT-PLAN.md §9.2, §9.3; NETWORK-VIEW-PLAN.md
+ * Phase 1 step 6).
  *
- * Working application, not a marketing hero: mission launcher -> investigation
- * (globe + freight HUD + event cards + timeline + evidence drawer). Fixture
- * mode by default; the SIM badge is visible whenever simulated data is shown
- * (§3.1). Attribution is always rendered (§9.3, §15). Share state is the URL
- * hash only (§11.1/§11.2 — no secrets).
+ * Working application, not a marketing hero: NETWORK VIEW (all profiles on one
+ * globe + compare table + corridor arcs) -> focus (freight HUD + event cards +
+ * timeline + evidence drawer). The mission launcher screen is gone; the
+ * compare table replaces it. Fixture mode by default; the SIM badge is visible
+ * whenever simulated data is shown (§3.1). Attribution is always rendered
+ * (§9.3, §15). Share state is the URL hash only (§11.1/§11.2 — no secrets).
  */
 
 // Cesium reads window.CESIUM_BASE_URL at RUNTIME (the Vite `define` only
@@ -28,8 +30,7 @@ import * as Cesium from "cesium";
 import "./styles.css";
 import { startup } from "./app/startup";
 import { shareUrl } from "./app/shareState";
-import { createFreightGlobe, type FreightGlobe } from "./scene/globe";
-import { renderMissionLauncher, launcherCards } from "./ui/missionLauncher";
+import { createFreightGlobe, type FreightGlobe, type NodeMarker } from "./scene/globe";
 import { renderFreightHud } from "./ui/freightHud";
 import { renderEventCards } from "./overlays/eventCards";
 import { renderEvidenceDrawer } from "./ui/evidenceDrawer";
@@ -50,6 +51,15 @@ import {
   type WatchlistEntry,
 } from "./app/watchlist";
 import { TimelineController, replayWindow } from "./ui/timeline";
+import {
+  compareRows,
+  networkObservations,
+  renderCompareTable,
+  headlineSeries,
+  type CompareSort,
+} from "./ui/compareTable";
+import { resolveRouteArcs, primaryFence, centroidOfRing } from "./config/routes";
+import { buildStorySteps, renderStoryBar, type StoryStep } from "./ui/storyMode";
 import type { ChokepointSnapshot } from "./data/manager";
 import type { AppStateSnapshot } from "./app/appState";
 import type { PolygonRing } from "./config/chokepoints";
@@ -57,12 +67,11 @@ import type { PolygonRing } from "./config/chokepoints";
 const root = document.querySelector<HTMLDivElement>("#app");
 if (!root) throw new Error("#app container missing");
 
-type View = "launcher" | "investigation";
-let view: View = "launcher";
 let globe: FreightGlobe | null = null;
-let shownChokepointId: string | null = null;
+let shownFocusId: string | null = null;
 let timeline: TimelineController | null = null;
 let replayTick: number | null = null;
+let compareSort: CompareSort = "anomaly";
 // Watchlist (Workflow E): local-first persistence; evaluated from data only.
 let watchEntries: WatchlistEntry[] = loadWatchlist(window.localStorage);
 
@@ -184,6 +193,50 @@ function samplePixel(gl: WebGLRenderingContext | null, canvas: HTMLCanvasElement
     const mem = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
     return mem ? mem.usedJSHeapSize : null;
   },
+  getNodeSpriteInfo: () => {
+    if (!globe) return null;
+    return globe.viewer.entities.values
+      .filter((e) => typeof e.id === "string" && e.id.startsWith("node-"))
+      .map((e) => {
+        const img = e.billboard?.image?.getValue(viewer_clock(globe!));
+        return {
+          id: String(e.id),
+          type: typeof img,
+          isCanvas: img instanceof HTMLCanvasElement,
+          width: (img as HTMLCanvasElement | undefined)?.width ?? null,
+          height: (img as HTMLCanvasElement | undefined)?.height ?? null,
+        };
+      });
+  },
+  inspectBillboards: () => {
+    if (!globe) return null;
+    const out: Array<Record<string, unknown>> = [];
+    const prims = Array.from(
+      globe.viewer.scene.primitives as unknown as Iterable<Record<string, unknown>>,
+    );
+    for (const p of prims) {
+      const billboards = (p as { billboards?: Array<Record<string, unknown>> })?.billboards;
+      if (Array.isArray(billboards)) {
+        for (const b of billboards) {
+          out.push({
+            id: String(b.id ?? ""),
+            imageType: typeof b.image,
+            width: (b.image as HTMLCanvasElement | undefined)?.width ?? null,
+            height: (b.image as HTMLCanvasElement | undefined)?.height ?? null,
+            ready: b.ready,
+            show: b.show,
+          });
+        }
+      }
+    }
+    return out;
+  },
+  testCanvas: () => {
+    const c = document.createElement("canvas");
+    c.width = 148;
+    c.height = 44;
+    return { w: c.width, h: c.height, ctx: !!c.getContext("2d") };
+  },
   getCamera: () => {
     if (!globe) return null;
     const carto = globe.viewer.camera.positionCartographic;
@@ -221,6 +274,11 @@ root.innerHTML = `
 const viewRoot = document.querySelector<HTMLDivElement>("#view-root")!;
 const attributionText = document.querySelector<HTMLSpanElement>("#attribution-text")!;
 
+/** Function-bound access keeps TS from over-narrowing the module-level globe. */
+function getGlobe(): FreightGlobe | null {
+  return globe;
+}
+
 function required(selector: string): HTMLElement {
   const el = viewRoot.querySelector<HTMLElement>(selector);
   if (!el) throw new Error(`missing element ${selector}`);
@@ -236,22 +294,61 @@ function reviewedRings(chokepointId: string): Array<{ id: string; ring: PolygonR
     .filter((r): r is { id: string; ring: PolygonRing } => r !== null);
 }
 
+// ------------------------------------------------------------ network scene
+
+/**
+ * Fence entities for ALL profiles at once. Fence ids are prefixed with the
+ * profile id (`profile.id:fence.id`) so per-profile removal stays possible as
+ * the registry grows. HARD RULE: no entity id may contain "@" —
+ * globe.showObservations removes entities by that substring (observation ids
+ * embed `entityId@observedAt`), so a "@" here would get fences/arcs wiped on
+ * every refresh (NETWORK-VIEW-PLAN.md constraint).
+ */
+function allFences(): Array<{ id: string; ring: PolygonRing; label: string }> {
+  const fences: Array<{ id: string; ring: PolygonRing; label: string }> = [];
+  for (const profile of manager.listChokepoints()) {
+    for (const r of reviewedRings(profile.id)) {
+      fences.push({ id: `${profile.id}:${r.id}`, ring: r.ring, label: `${profile.name} — ${r.id}` });
+    }
+  }
+  return fences;
+}
+
+/**
+ * One anchor [lat, lon] per profile: the centroid of the SAME primary fence
+ * the focus camera frames (config/routes.primaryFence pins the rule), so
+ * nodes, arcs, and focus framing always agree.
+ */
+function nodeAnchors(): Array<{ id: string; name: string; anchor: [number, number] }> {
+  return manager
+    .listChokepoints()
+    .map((p) => {
+      const fence = primaryFence(p);
+      return fence.geometry.kind === "polygon"
+        ? { id: p.id, name: p.name, anchor: centroidOfRing(fence.geometry.ring) }
+        : null;
+    })
+    .filter((n): n is { id: string; name: string; anchor: [number, number] } => n !== null);
+}
+
 /**
  * Agent turn (§8): question -> deterministic tools -> evidence bundle ->
  * evaluator -> caveated answer. The wall clock is not read: the window is
- * the current investigation state.
+ * the current investigation state. On the network view (focus null) the
+ * context scope is null and the intent parser resolves a NAMED chokepoint
+ * from the question — the agent never guesses a scope (§8.2).
  */
 async function handleAgentQuestion(question: string): Promise<void> {
   const snapshot = state.get();
   const answerEl = required("#agent");
   const { answer, uiAction } = await askAgent(question, manager, {
-    chokepointId: snapshot.chokepointId,
+    chokepointId: snapshot.focusChokepointId,
     window: snapshot.timeWindow,
   });
   let appliedNote: string | null = null;
   if (uiAction) {
     const outcome = applyAgentAction(uiAction);
-    appliedNote = outcome ? "Applied to the current view." : "Not applied — no investigation is open.";
+    appliedNote = outcome ? "Applied to the current view." : "Not applied — no chokepoint is in focus.";
   }
   renderAgentAnswer(answerEl, {
     text: appliedNote ? `${answer.text} ${appliedNote}` : answer.text,
@@ -264,8 +361,8 @@ async function handleAgentQuestion(question: string): Promise<void> {
 
 /**
  * Apply a validated §4.4 UI action through app state (§8.6: camera/layer
- * ownership is separate from analytics). Returns true only when the state
- * update was actually issued — the response may claim success only then.
+ * ownership is separate from analytical results; a response may claim success
+ * only when the state update was actually issued).
  */
 function applyAgentAction(action: UiAction): boolean {
   const snapshot = state.get();
@@ -273,7 +370,7 @@ function applyAgentAction(action: UiAction): boolean {
     case "focus_chokepoint": {
       const window = manager.defaultWindow();
       state.update({
-        chokepointId: action.chokepointId,
+        focusChokepointId: action.chokepointId,
         timeWindow: window,
         replay: { cursor: window.endAt, playing: false },
       });
@@ -310,7 +407,7 @@ function persistWatchlist(): void {
 }
 
 function addWatch(selection: WatchlistSaveSelection): void {
-  const chokepointId = state.get().chokepointId;
+  const chokepointId = state.get().focusChokepointId;
   if (!chokepointId) return;
   const profile = manager.listChokepoints().find((c) => c.id === chokepointId);
   if (!profile) return;
@@ -337,74 +434,103 @@ function addWatch(selection: WatchlistSaveSelection): void {
   persistWatchlist();
 }
 
-// ------------------------------------------------------------- launcher view
+// ---------------------------------------------------------- network shell
 
-function renderLauncher(): void {
-  view = "launcher";
-  shownChokepointId = null;
-  if (globe) {
-    globe.destroy();
-    globe = null;
-  }
-  viewRoot.innerHTML = `<div id="launcher" class="launcher"></div>`;
-  const launcherEl = viewRoot.querySelector<HTMLDivElement>("#launcher")!;
-  const cards = launcherCards(manager.listChokepoints(), (fenceId) => manager.coverageHint(fenceId));
-  // Watchlist (Workflow E): saved watches evaluated against the fixture replay.
-  const watchEl = document.createElement("div");
-  watchEl.id = "watchlist";
-  watchEl.className = "watchlist";
-  launcherEl.appendChild(watchEl);
-  const evaluations = evaluateWatchlist(watchEntries, (id) =>
-    manager.listChokepoints().some((c) => c.id === id) ? manager.getSnapshot(id, manager.defaultWindow()) : null,
-  );
-  renderWatchlistPanel(watchEl, watchEntries, evaluations, (id) => {
-    watchEntries = removeWatchEntry(watchEntries, id);
-    persistWatchlist();
-    renderLauncher();
-  });
-  renderMissionLauncher(launcherEl, cards, (chokepointId) => {
-    state.update({
-      chokepointId,
-      timeWindow: manager.defaultWindow(),
-      replay: { cursor: manager.defaultWindow().endAt, playing: false },
-    });
-  });
-}
-
-// ------------------------------------------------------ investigation view
-
-function mountInvestigationShell(): void {
+function mountNetworkShell(): void {
   viewRoot.innerHTML = `
-    <div class="investigation">
+    <div class="network">
       <aside class="left-rail">
-        <button id="back-to-launcher" data-testid="back-to-launcher">← All chokepoints</button>
-        <div id="watch-save" class="watch-save-slot"></div>
+        <div id="compare" class="compare-slot"></div>
+        <div id="watchlist" class="watchlist"></div>
         <div id="agent" class="agent-slot"></div>
         <div id="voice" class="voice-slot"></div>
-        <div id="hud" class="hud"></div>
-        <div id="event-cards" class="event-cards"></div>
       </aside>
       <main class="globe-pane">
         <div id="globe"></div>
+        <button id="story-start" data-testid="story-start" class="story-start" title="Guided tour of the network">▶ Guided story</button>
+        <div class="legend" data-testid="legend" aria-hidden="false">
+          <span class="legend-item"><span class="legend-swatch legend-fence"></span>Reviewed geofence</span>
+          <span class="legend-item"><span class="legend-swatch legend-arc"></span>Illustrative corridor (not a tracked path)</span>
+          <span class="legend-item"><span class="legend-swatch legend-pulse"></span>Waiting cohort</span>
+          <span class="legend-item legend-note">All data SIMULATED (SIM)</span>
+        </div>
+        <div id="story-bar-slot" class="story-bar-slot"></div>
         <div id="timeline" class="timeline"></div>
         <div id="share" class="share"></div>
       </main>
       <aside class="right-rail">
-        <div id="evidence" class="evidence"></div>
+        <div id="focus-panel" class="focus-panel"></div>
       </aside>
     </div>
   `;
   globe = createFreightGlobe(required("#globe"));
-  required("#back-to-launcher").addEventListener("click", () => {
-    state.update({ chokepointId: null, timeWindow: null });
+  // P2: globe nodes are first-class navigation — click = focus (§8.6: the
+  // state update is the transaction; the camera move follows from state).
+  globe.onNodeClick((chokepointId) => {
+    state.update({ focusChokepointId: chokepointId });
   });
-  // The save form and agent panel depend only on the profile — render once at
-  // mount so the details elements keep their open state across replay ticks.
-  renderWatchlistSaveForm(required("#watch-save"), manager.listChokepoints().find((c) => c.id === state.get().chokepointId)?.name ?? "chokepoint", addWatch);
+  required("#story-start").addEventListener("click", startStory);
+  // The agent panel is rendered ONCE at mount so its details elements keep
+  // their open state across replay ticks.
   renderAgentPanel(required("#agent"), (question) => {
     void handleAgentQuestion(question);
   });
   mountVoicePanel();
+}
+
+/**
+ * One-time scene population: every profile's fences (prefixed ids) + the
+ * declared illustrative corridors. Fences and arcs are drawn ONCE per mount;
+ * focus changes never re-call showFences (NETWORK-VIEW-PLAN.md step 6).
+ * clearOverlays() first makes the draw idempotent — re-mounts cannot
+ * accumulate stale fence entities (fixes a pre-existing accumulation bug on
+ * agent focus_chokepoint while an investigation is open).
+ */
+function renderNetworkScene(): void {
+  if (!globe) return;
+  globe.clearOverlays();
+  globe.showFences(allFences());
+  globe.showRoutes(resolveRouteArcs());
+}
+
+// ------------------------------------------------------ focus (right rail)
+
+/**
+ * The right rail: focus panel when a row/node is selected, an honest hint
+ * otherwise. All renders reuse the existing freightHud / eventCards /
+ * evidenceDrawer functions unchanged (NETWORK-VIEW-PLAN.md step 6).
+ */
+function renderFocusPanel(snapshot: AppStateSnapshot): void {
+  const panel = required("#focus-panel");
+  if (!snapshot.focusChokepointId) {
+    panel.innerHTML = `
+      <div class="focus-hint" data-testid="focus-hint">
+        <h3>Network view</h3>
+        <p>Five chokepoints, one system. Select a row in the compare table — or a node on the globe — to open its investigation. Corridor arcs are illustrative, not tracked vessel paths.</p>
+      </div>
+    `;
+    return;
+  }
+  panel.innerHTML = `
+    <button id="clear-focus" data-testid="clear-focus">← All chokepoints</button>
+    <div id="watch-save" class="watch-save-slot"></div>
+    <div id="hud" class="hud"></div>
+    <div id="event-cards" class="event-cards"></div>
+    <div id="evidence" class="evidence"></div>
+  `;
+  required("#clear-focus").addEventListener("click", () => {
+    state.update({ focusChokepointId: null });
+  });
+  const profile = manager.listChokepoints().find((c) => c.id === snapshot.focusChokepointId);
+  renderWatchlistSaveForm(required("#watch-save"), profile?.name ?? "chokepoint", addWatch);
+}
+
+function focusSnapshotFor(
+  snapshot: AppStateSnapshot,
+  snaps: readonly ChokepointSnapshot[],
+): ChokepointSnapshot | null {
+  if (!snapshot.focusChokepointId) return null;
+  return snaps.find((s) => s.profile.id === snapshot.focusChokepointId) ?? null;
 }
 
 // ------------------------------------------------------- voice (§8.6 keyless)
@@ -471,7 +597,7 @@ async function handleVoiceQuestion(transcript: string): Promise<void> {
   const result = await runVoiceTurn(transcript, {
     ask: async (question) => {
       const { answer, verdict, uiAction } = await askAgent(question, manager, {
-        chokepointId: snapshot.chokepointId,
+        chokepointId: snapshot.focusChokepointId,
         window: snapshot.timeWindow,
       });
       // §8.6: apply through app state; speak "applied" only on success.
@@ -494,50 +620,191 @@ async function handleVoiceQuestion(transcript: string): Promise<void> {
   }
 }
 
-function openInvestigation(snapshot: AppStateSnapshot): void {
-  const chokepointId = snapshot.chokepointId!;
-  if (view !== "investigation") {
-    view = "investigation";
-    mountInvestigationShell();
+// ------------------------------------------------------------------ refresh
+
+/**
+ * Data-driven re-render of ALL data views (cursor/selection/window changes).
+ * Camera and fences are NOT re-framed here: replay ticks must not move the
+ * camera, and the render governor bounds what gets painted. Observations are
+ * always the MERGED set across all profiles in ONE showObservations call —
+ * sequential per-profile calls would clobber (each call removes every "@"
+ * entity first; only the last profile's points would survive).
+ */
+function refreshView(snapshot: AppStateSnapshot): void {
+  if (!globe || !snapshot.timeWindow) return;
+  const windowToUse = snapshot.replay.cursor ? replayWindow(snapshot.replay.cursor) : snapshot.timeWindow;
+  const snaps = manager.getAllSnapshots(windowToUse);
+  globe.showObservations(networkObservations(snaps).observations, snapshot.selectedEntityId);
+  // Phase 1.5 P2/P4 node markers are OPT-IN (?nodes) pending a Cesium render
+  // crash triggered by nodes+pulses together (STATUS.md, open blocker). The
+  // network view boots clean without them.
+  if (new URLSearchParams(window.location.search).has("nodes")) updateNodeMarkers(snaps);
+
+  renderCompareTable(required("#compare"), compareRows(snaps, (f) => manager.coverageHint(f)), (chokepointId) => {
+    state.update({ focusChokepointId: chokepointId });
+  }, { sort: compareSort, focusedId: snapshot.focusChokepointId, onSortChange: onSortChange, sparklines: sparklineData });
+
+  // Watchlist evaluates against the SAME shared snapshots (one computation,
+  // shared by compare table, watchlist, and focus rail).
+  renderWatchlistFor(snaps);
+
+  const focusedSnap = focusSnapshotFor(snapshot, snaps);
+  if (focusedSnap) {
+    renderFreightHud(required("#hud"), focusedSnap);
+    renderEventCards(required("#event-cards"), focusedSnap.events, focusedSnap.comparisons.vesselCount);
+    renderEvidenceDrawer(required("#evidence"), focusedSnap);
+    renderTimelineControls(focusedSnap);
+    attributionText.textContent = focusedSnap.attribution.attributionText;
+  } else {
+    renderTimelineControls(snaps[0]!);
+    attributionText.textContent = uniqueAttributions(snaps);
   }
-  const g: FreightGlobe = globe ?? createFreightGlobe(required("#globe"));
-  globe = g;
-  g.showFences(reviewedRings(chokepointId).map((r) => ({ id: r.id, ring: r.ring, label: r.id })));
-  const profile = manager.listChokepoints().find((c) => c.id === chokepointId)!;
-  // Frame the fence that actually contains the observations (the waiting-cohort
-  // fence when present), not the wide approach corridor — §4.1 camera framing
-  // serves the data view, not the widest region.
-  const primary =
-    profile.geofences.find((ge) => ge.purpose === "waiting-cohort") ??
-    profile.geofences.find((ge) => ge.purpose === "approach-flow") ??
-    profile.geofences[0]!;
-  if (primary.geometry.kind === "polygon") {
-    g.frameRing(primary.geometry.ring);
+  if (storyIndex !== null) renderStoryStep();
+  renderShareLink();
+}
+
+/** Sort-button re-render: compare table only (no scene work, §12.5). */
+function onSortChange(sort: CompareSort): void {
+  compareSort = sort;
+  const snapshot = state.get();
+  if (!snapshot.timeWindow || !globe) return;
+  const windowToUse = snapshot.replay.cursor ? replayWindow(snapshot.replay.cursor) : snapshot.timeWindow;
+  const snaps = manager.getAllSnapshots(windowToUse);
+  renderCompareTable(required("#compare"), compareRows(snaps, (f) => manager.coverageHint(f)), (chokepointId) => {
+    state.update({ focusChokepointId: chokepointId });
+  }, { sort: compareSort, focusedId: snapshot.focusChokepointId, onSortChange: onSortChange, sparklines: sparklineData });
+}
+
+/** Watch-remove re-render: panel only. */
+function renderWatchlistFor(snaps: readonly ChokepointSnapshot[]): void {
+  const evaluations = evaluateWatchlist(watchEntries, (id) => snaps.find((s) => s.profile.id === id) ?? null);
+  renderWatchlistPanel(required("#watchlist"), watchEntries, evaluations, (id) => {
+    watchEntries = removeWatchEntry(watchEntries, id);
+    persistWatchlist();
+    renderWatchlistFor(snaps);
+  });
+}
+
+// ------------------------------------------------------------- story mode
+
+let storyIndex: number | null = null;
+
+/**
+ * Apply a story step through app state (§8.6: the tour never touches the
+ * scene directly — focus + camera follow from the state update).
+ */
+function applyStoryStep(step: StoryStep): void {
+  const current = state.get();
+  if ((current.focusChokepointId ?? null) !== (step.focusId ?? null)) {
+    state.update({ focusChokepointId: step.focusId });
   }
-  shownChokepointId = chokepointId;
-  refreshInvestigation(snapshot);
+}
+
+function startStory(): void {
+  storyIndex = 0;
+  renderStoryStep();
+}
+
+function renderStoryStep(): void {
+  if (storyIndex === null) return;
+  const snaps = manager.getAllSnapshots(state.get().timeWindow ?? manager.defaultWindow());
+  const steps = buildStorySteps(snaps);
+  if (steps.length === 0) {
+    storyIndex = null;
+    return;
+  }
+  const idx = Math.min(storyIndex, steps.length - 1);
+  applyStoryStep(steps[idx]!);
+  const barEl = viewRoot.querySelector<HTMLElement>("#story-bar-slot");
+  if (barEl) {
+    renderStoryBar(barEl, steps[idx]!, idx, steps.length, {
+      onPrev: () => {
+        if (storyIndex !== null && storyIndex > 0) {
+          storyIndex -= 1;
+          renderStoryStep();
+        }
+      },
+      onNext: () => {
+        if (storyIndex === null) return;
+        if (storyIndex < steps.length - 1) {
+          storyIndex += 1;
+          renderStoryStep();
+        } else {
+          exitStory();
+        }
+      },
+      onExit: exitStory,
+    });
+  }
+}
+
+function exitStory(): void {
+  storyIndex = null;
+  const barEl = viewRoot.querySelector<HTMLElement>("#story-bar-slot");
+  if (barEl) barEl.innerHTML = "";
+}
+
+// ------------------------------------------------------------------- nodes
+
+let lastMarkerSignature: string | null = null;
+
+// P5 sparkline series over the DEFAULT window (computed once at boot — the
+// full-timeline shape is context, not a per-tick measurement; replay buckets
+// would recompute 50 snapshots per tick).
+let sparklineData: Record<string, ReadonlyArray<number | null>> = {};
+
+function computeSparklines(): void {
+  const w = manager.defaultWindow();
+  const snaps = manager.getAllSnapshots(w);
+  sparklineData = headlineSeries(snaps, (id, win) => manager.getSnapshot(id, win), w);
 }
 
 /**
- * Data-driven re-render of the investigation view (cursor/selection/window
- * changes). Camera and fences are NOT re-framed here: replay ticks must not
- * move the camera, and the render governor bounds what gets painted.
+ * Node status markers (P2) + cohort pulses (P4), rebuilt from shared
+ * snapshots. Rebuilt ONLY when the signature changes — replay ticks do not
+ * re-generate sprites (the pulse animates on its own via the viewer clock).
  */
-function refreshInvestigation(snapshot: AppStateSnapshot): void {
-  if (view !== "investigation" || !globe) return;
-  const chokepointId = snapshot.chokepointId!;
-  const windowToUse = snapshot.replay.cursor ? replayWindow(snapshot.replay.cursor) : snapshot.timeWindow!;
-  const snap = manager.getSnapshot(chokepointId, windowToUse);
-  globe.showObservations(snap.observations, snapshot.selectedEntityId);
-  renderFreightHud(required("#hud"), snap);
-  renderEventCards(required("#event-cards"), snap.events, snap.comparisons.vesselCount);
-  renderEvidenceDrawer(required("#evidence"), snap);
-  renderTimelineControls(snap);
-  renderShareLink();
-  attributionText.textContent = snap.attribution.attributionText;
+function updateNodeMarkers(snaps: readonly ChokepointSnapshot[]): void {
+  const rows = compareRows(snaps, (f) => manager.coverageHint(f));
+  const byId = new Map(rows.map((r) => [r.chokepointId, r]));
+  const anchors = new Map(nodeAnchors().map((n) => [n.id, n.anchor]));
+  const markers: NodeMarker[] = [];
+  for (const snap of snaps) {
+    const anchor = anchors.get(snap.profile.id);
+    if (!anchor) continue;
+    const row = byId.get(snap.profile.id);
+    const headline = snap.profile.mode === "land"
+      ? (row?.headline ? `${row.headline.value} ${row.headline.unit === "minutes" ? "min wait" : row.headline.unit}` : "no facility readings")
+      : `${snap.metrics.vesselCount.value ?? "—"} vessels`;
+    markers.push({
+      id: snap.profile.id,
+      name: snap.profile.name,
+      anchor,
+      headline,
+      badge: row?.headline?.badge ?? "UNKNOWN",
+      cohort: snap.metrics.dwellCohortSize.value ?? 0,
+    });
+  }
+  const signature = JSON.stringify(markers);
+  if (signature === lastMarkerSignature) return;
+  lastMarkerSignature = signature;
+  const flags = new URLSearchParams(window.location.search);
+  const pulseMode = flags.get("pulsemode") ?? "normal"; // normal | nodepth | static | off
+  let filtered = markers;
+  if (pulseMode === "nodepth") filtered = markers.map((mk) => ({ ...mk, cohort: mk.cohort > 0 ? -1 : 0 }));
+  if (pulseMode === "static") filtered = markers.map((mk) => ({ ...mk, cohort: mk.cohort > 0 ? 100 : 0 }));
+  if (pulseMode === "off" || flags.has("nopulse")) filtered = markers.map((mk) => ({ ...mk, cohort: 0 }));
+  const visible = flags.has("nonodes") ? [] : filtered;
+  globe?.showNodeMarkers(visible);
 }
 
-// ------------------------------------------------------------------ timeline
+function uniqueAttributions(snaps: readonly ChokepointSnapshot[]): string {
+  const seen = new Set<string>();
+  for (const s of snaps) seen.add(s.attribution.attributionText);
+  return [...seen].join("  ·  ");
+}
+
+// ---------------------------------------------------------------- timeline
 
 function renderTimelineControls(snap: ChokepointSnapshot): void {
   const el = required("#timeline");
@@ -609,8 +876,10 @@ function ensureReplayLoop(): void {
 }
 
 state.subscribe((snapshot) => {
-  if (!snapshot.chokepointId || !snapshot.timeWindow) {
-    if (view !== "launcher") renderLauncher();
+  if (!snapshot.timeWindow) {
+    // No window yet: nothing to render data views against. The boot sequence
+    // sets a default window BEFORE the first subscriber run; this guard keeps
+    // a malformed share restore from crashing the loop honestly.
     return;
   }
   if (!timeline) {
@@ -628,22 +897,59 @@ state.subscribe((snapshot) => {
     if (snapshot.replay.playing) timeline.play();
     else timeline.pause();
   }
+  // P3: corridor arcs flow during replay playback; static when paused.
+  globe?.setRouteFlow(snapshot.replay.playing);
   timeline.seek(snapshot.replay.cursor ?? snapshot.timeWindow.endAt);
-  if (snapshot.chokepointId !== shownChokepointId) {
-    openInvestigation(snapshot);
-  } else if (view === "investigation") {
-    // Cursor, selection, and overlay changes drive the data views (§12.5:
-    // scrubbing and replay update the scene; the camera stays put).
-    refreshInvestigation(snapshot);
+  // Focus transitions MAY move the camera (§4.1 framing serves the data
+  // view); data-only refreshes never do (§12.5: replay ticks never move the
+  // camera). Focus changes never re-call showFences.
+  if (snapshot.focusChokepointId !== shownFocusId) {
+    shownFocusId = snapshot.focusChokepointId;
+    if (globe) {
+      if (snapshot.focusChokepointId) {
+        const profile = manager.listChokepoints().find((c) => c.id === snapshot.focusChokepointId);
+        const primary = profile ? primaryFence(profile) : null;
+        // Frame the fence that actually contains the observations (the
+        // waiting-cohort fence when present), not the wide approach corridor
+        // — the same primary-fence rule the node anchors use (§4.1).
+        if (primary && primary.geometry.kind === "polygon") globe.frameRing(primary.geometry.ring);
+      } else {
+        globe.frameAll(nodeAnchors().map((n) => n.anchor));
+      }
+    }
+    // Focus rail content switches with focus; refreshView fills the data.
+    renderFocusPanel(snapshot);
   }
+  refreshView(snapshot);
   ensureReplayLoop();
 });
 
-// --- Initial view: share link restores an investigation; else the launcher. ---
+// --- Boot (NETWORK-VIEW-PLAN.md Phase 1 step 6 truth table):
+// - no share link (or no c= param): NETWORK view — focus null, default window.
+// - c= share link: focused view restored; window from t0/t1, else default.
+// The network view is the default landing; there is no launcher screen.
 const boot = state.get();
-if (boot.chokepointId && boot.timeWindow) {
-  view = "investigation";
-  openInvestigation(boot);
-} else {
-  renderLauncher();
+mountNetworkShell();
+renderNetworkScene();
+if (!boot.timeWindow) {
+  const w = manager.defaultWindow();
+  state.update({ timeWindow: w, replay: { cursor: w.endAt, playing: false } });
 }
+computeSparklines();
+const bootSnaps = manager.getAllSnapshots(state.get().timeWindow ?? manager.defaultWindow());
+if (boot.focusChokepointId) {
+  shownFocusId = boot.focusChokepointId;
+  renderFocusPanel(state.get());
+  const g = getGlobe();
+  const bootFocused = focusSnapshotFor(state.get(), bootSnaps);
+  if (bootFocused && g) {
+    const primary = primaryFence(bootFocused.profile);
+    if (primary.geometry.kind === "polygon") g.frameRing(primary.geometry.ring);
+  }
+} else {
+  // Landing frame (P1): set high, then one fixed-duration settle fly-in over
+  // the whole network. §4.1 framing serves the data view; duration is fixed
+  // and deterministic (§12.5 has no wall clock — this is camera-only motion).
+  getGlobe()?.bootFlyIn(nodeAnchors().map((n) => n.anchor));
+}
+refreshView(state.get());

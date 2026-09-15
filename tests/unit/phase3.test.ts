@@ -37,8 +37,8 @@ describe("app state", () => {
   it("patches immutably and notifies subscribers", () => {
     const store = new AppState("fixture");
     const seen: string[] = [];
-    store.subscribe((s) => seen.push(s.chokepointId ?? "none"));
-    store.update({ chokepointId: "long-beach-approach" });
+    store.subscribe((s) => seen.push(s.focusChokepointId ?? "none"));
+    store.update({ focusChokepointId: "long-beach-approach" });
     store.update({ sourceMode: "live" });
     expect(seen).toEqual(["long-beach-approach", "long-beach-approach"]);
     expect(store.get().sourceMode).toBe("live");
@@ -46,8 +46,8 @@ describe("app state", () => {
 
   it("switching chokepoints resets stale selections (§ fresh investigation)", () => {
     const store = new AppState();
-    store.update({ chokepointId: "long-beach-approach", selectedEntityId: "e1", selectedEventId: "ev1" });
-    store.update({ chokepointId: "suez-canal-approaches" });
+    store.update({ focusChokepointId: "long-beach-approach", selectedEntityId: "e1", selectedEventId: "ev1" });
+    store.update({ focusChokepointId: "suez-canal-approaches" });
     expect(store.get().selectedEntityId).toBeNull();
     expect(store.get().selectedEventId).toBeNull();
   });
@@ -77,7 +77,7 @@ describe("app state", () => {
 
 describe("share state (§11.2: no secrets, no private data)", () => {
   const snapshot = {
-    chokepointId: "long-beach-approach",
+    focusChokepointId: "long-beach-approach",
     timeWindow: { startAt: "2026-09-09T12:00:00Z", endAt: "2026-09-09T14:00:00Z" },
     replay: { cursor: "2026-09-09T13:30:00Z" },
     selectedEventId: "queue_buildup@long-beach-approach@2026-09-09T12:00:00Z",
@@ -89,7 +89,7 @@ describe("share state (§11.2: no secrets, no private data)", () => {
   it("round-trips encode -> decode", () => {
     const decoded = decodeShareState(encodeShareState(toShareState(snapshot)));
     expect(decoded).not.toBeNull();
-    expect(decoded!.chokepointId).toBe(snapshot.chokepointId);
+    expect(decoded!.focusChokepointId).toBe(snapshot.focusChokepointId);
     expect(decoded!.timeWindow).toEqual(snapshot.timeWindow);
     expect(decoded!.replayCursor).toBe("2026-09-09T13:30:00Z");
     expect(decoded!.selectedEventId).toBe(snapshot.selectedEventId);
@@ -101,7 +101,7 @@ describe("share state (§11.2: no secrets, no private data)", () => {
     const url = shareUrl("https://example.com/app", snapshot);
     expect(url).toMatch(/^https:\/\/example\.com\/app#/);
     const decoded = decodeShareState(new URL(url).hash);
-    expect(decoded!.chokepointId).toBe("long-beach-approach");
+    expect(decoded!.focusChokepointId).toBe("long-beach-approach");
   });
 
   it("missing overlay flags decode to sane defaults (never a blank map)", () => {

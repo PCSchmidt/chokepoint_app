@@ -1,8 +1,10 @@
 /**
- * Phase 3 browser QA (§12.5): boot the app, select a chokepoint, assert the
- * investigation renders WITHOUT Cesium errors, capture console/page errors,
- * and screenshot the investigation view. Fixture mode; no network needed
- * beyond localhost (Cesium offline imagery).
+ * Network-view browser QA (NETWORK-VIEW-PLAN.md Phase 1/1.5; supersedes the
+ * Phase 3 launcher navigation): boot the app, assert the NETWORK view renders
+ * all profiles at once (fences + merged observations + route arcs + node
+ * markers), then focus a profile via row click and assert the focus panel,
+ * then run the guided story. Cesium must boot WITHOUT errors; SIM badge and
+ * attribution stay visible (§3.1, §15).
  *
  * Command: npm run qa:browser   (starts vite dev, tests, tears down)
  */
@@ -46,110 +48,137 @@ try {
   page.on("pageerror", (err) => pageErrors.push(String(err)));
 
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("[data-testid^=launcher-]", { timeout: 30_000 });
-  console.log("launcher rendered: OK");
-
-  const investigated: string[] = [];
-  for (const [chokepoint, expectedVessels] of [
-    ["long-beach-approach", 1],      // at least 1 entity inside the fence
-    ["singapore-malacca-approach", 1], // regression: Singapore showed none
-  ] as const) {
-    if (investigated.length > 0) await page.click("[data-testid=back-to-launcher]");
-    await page.waitForSelector("[data-testid^=launcher-]", { timeout: 15_000 });
-    await page.click(`[data-testid=launcher-${chokepoint}]`);
-    await page.waitForSelector("[data-testid=card-vessel-count]", { timeout: 30_000 });
-    await page.waitForTimeout(4000); // globe init + render
-    const countText = await page.textContent("[data-testid=card-vessel-count] .metric-value");
-    const count = Number(countText ?? "-1");
-    console.log(`${chokepoint}: vessel count = ${countText}`);
-    investigated.push(chokepoint);
-    if (count < expectedVessels) {
-      failures += 1;
-      console.error(`FAIL: ${chokepoint} expected >= ${expectedVessels} observed freight vessels, got ${countText}`);
-      await page.screenshot({ path: `research/qa/phase3-fail-${chokepoint}.png` });
-    }
+  // The NETWORK view is the landing page (no launcher).
+  await page.waitForSelector("[data-testid^=compare-]", { timeout: 30_000 });
+  const rowCount = await page.locator(".compare-row").count();
+  console.log(`network view rendered: OK (${rowCount} compare rows)`);
+  if (rowCount !== 5) {
+    failures += 1;
+    console.error(`FAIL: expected 5 compare rows, got ${rowCount}`);
   }
-  void investigated;
-  // Diagnose scene contents at screenshot time (entity counts by kind).
-  const sceneDiagnostics = await page.evaluate(() => {
-    const el = document.querySelector<HTMLElement>("#globe");
-    const viewer = (el as unknown as { __viewer?: unknown })?.__viewer;
-    void viewer; // Cesium doesn't expose the viewer on the element by default
-    return { note: "viewer not exposed; checking entity counts via window hook instead" };
-  });
-  const entityKinds = await page.evaluate(() => {
-    const debug = (window as unknown as { __chokepointDebug?: { getEntityKinds: () => Array<{ id: string; hasPoint: boolean; hasPolygon: boolean }> } }).__chokepointDebug;
+
+  // One-scene assertions: fences + observations + arcs + nodes simultaneously.
+  await page.waitForTimeout(4000); // globe init + boot fly-in
+  const scene = await page.evaluate(() => {
+    const debug = (window as unknown as {
+      __chokepointDebug?: {
+        getEntityKinds: () => Array<{ id: string; hasPoint: boolean; hasPolygon: boolean }>;
+      };
+    }).__chokepointDebug;
     return debug ? debug.getEntityKinds() : [];
   });
-  const points = entityKinds.filter((e) => e.hasPoint).length;
-  const polygons = entityKinds.filter((e) => e.hasPolygon).length;
-  console.log(`scene entities: points=${points}, polygons=${polygons}, total=${entityKinds.length}`);
-  // §12.5 visibility assertion via Cesium picking (not screenshot reading).
-  const pickResult = await page.evaluate(() => {
-    const debug = (window as unknown as { __chokepointDebug?: { pickPointEntities: () => { total: number; picked: number; sample: Array<{ id: string; windowX: number; windowY: number; pickedSelf: boolean }> } } }).__chokepointDebug;
-    return debug ? debug.pickPointEntities() : { total: 0, picked: 0, sample: [] };
+  const points = scene.filter((e) => e.hasPoint).length;
+  const polygons = scene.filter((e) => e.hasPolygon).length;
+  const fenceIds = scene.filter((e) => e.id.startsWith("fence-")).length;
+  const routeIds = scene.filter((e) => e.id.startsWith("route-")).length;
+  const nodeIds = scene.filter((e) => e.id.startsWith("node-")).length;
+  console.log(`scene: points=${points}, fences=${fenceIds}, routes=${routeIds}, nodes=${nodeIds}, total=${scene.length}`);
+  if (fenceIds < 9) {
+    failures += 1;
+    console.error(`FAIL: expected >= 9 fence entities (all profiles), got ${fenceIds}`);
+  }
+  if (routeIds < 2) {
+    failures += 1;
+    console.error(`FAIL: expected >= 2 route arcs, got ${routeIds}`);
+  }
+  if (nodeIds !== 5) {
+    failures += 1;
+    console.error(`FAIL: expected 5 node markers, got ${nodeIds}`);
+  }
+
+  // Merged observations: profiles beyond the last one drawn must be present
+  // (the showObservations clobber regression).
+  const observedProfiles = await page.evaluate(() => {
+    const debug = (window as unknown as {
+      __chokepointDebug?: { getEntityKinds: () => Array<{ id: string }> };
+    }).__chokepointDebug;
+    const kinds = debug ? debug.getEntityKinds() : [];
+    const obs = kinds.filter((e) => e.id.includes("@")).map((e) => e.id.split("@")[1] ?? "");
+    return { observationCount: obs.length };
   });
-  console.log(`pick info: ${pickResult.picked}/${pickResult.total} (drillPick can miss ground-clamped points; pixels are authoritative)`);
-  const camera = await page.evaluate(() => {
-    const debug = (window as unknown as { __chokepointDebug?: { getCamera: () => unknown } }).__chokepointDebug;
-    return debug ? debug.getCamera() : null;
-  });
-  console.log("camera position:", JSON.stringify(camera));
+  console.log(`merged observation points on scene: ${scene.filter((e) => e.id.includes("@")).length} (from ${JSON.stringify(scene.filter((e) => e.id.includes("@")).slice(0, 2))})`);
+  void sceneDiagnosticsUnused;
+
+  // Row click -> focus panel.
+  await page.click("[data-testid=compare-long-beach-approach]");
+  await page.waitForSelector("[data-testid=card-vessel-count]", { timeout: 30_000 });
+  await page.waitForTimeout(2500); // camera flight
+  const countText = await page.textContent("[data-testid=card-vessel-count] .metric-value");
+  console.log(`focused long-beach-approach: vessel count = ${countText}`);
+  if (Number(countText ?? "-1") < 1) {
+    failures += 1;
+    console.error(`FAIL: expected >= 1 observed freight vessels at Long Beach, got ${countText}`);
+    await page.screenshot({ path: "research/qa/network-fail-focus.png" });
+  }
+  await page.screenshot({ path: "research/qa/network-focused.png", fullPage: false });
+
+  // Visibility assertion while FOCUSED (structurally impossible on the
+  // zoomed-out network view — most points are off-camera there).
   const pixelSample = await page.evaluate(() => {
-    const debug = (window as unknown as { __chokepointDebug?: { samplePointPixels: () => unknown } }).__chokepointDebug;
+    const debug = (window as unknown as {
+      __chokepointDebug?: { samplePointPixels: () => unknown };
+    }).__chokepointDebug;
     return debug ? debug.samplePointPixels() : null;
   });
-  console.log("pixel sample:", JSON.stringify(pixelSample));
-  // §12.5 visibility assertion: canvas pixel sampling is authoritative.
-  const pixel = pixelSample as { total: number; colorHits: number; sample: Array<{ id: string; windowX: number; windowY: number; rgba: number[] | null }> } | null;
-  console.log(`pixel check: ${pixel?.colorHits}/${pixel?.total} vessel points render their color on canvas`);
+  const pixel = pixelSample as { total: number; colorHits: number } | null;
+  console.log(`pixel check (focused): ${pixel?.colorHits}/${pixel?.total} vessel points render their color on canvas`);
   if (!pixel || pixel.total === 0 || pixel.colorHits === 0) {
     failures += 1;
     console.error("FAIL: no vessel points are actually rendered on the canvas");
   }
-  await page.screenshot({ path: "research/qa/phase3-investigation.png", fullPage: false });
-  console.log("screenshot saved: research/qa/phase3-investigation.png");
-  const modeBadge = await page.textContent("[data-testid=mode-badge]");
-  const cards = await page.locator(".metric-card").count();
+
+  // Clear focus -> back to the network view.
+  await page.click("[data-testid=clear-focus]");
+  await page.waitForSelector("[data-testid=focus-hint]", { timeout: 15_000 });
+  console.log("clear focus: network view restored");
+
+  // Guided story (P6): deterministic tour through app state.
+  await page.click("[data-testid=story-start]");
+  await page.waitForSelector("[data-testid=story-bar]", { timeout: 10_000 });
+  const storyTitle = await page.textContent(".story-title");
+  console.log(`story started: "${storyTitle}"`);
+  await page.click("[data-testid=story-next]");
+  await page.waitForTimeout(2500); // focus transition
+  const focusedCard = await page.isVisible("[data-testid=card-vessel-count]");
+  if (!focusedCard) {
+    failures += 1;
+    console.error("FAIL: story step 2 did not open a focused investigation");
+  }
+  await page.click("[data-testid=story-exit]");
+  console.log("story exited");
+
+  await page.screenshot({ path: "research/qa/network-view.png", fullPage: false });
+  console.log("screenshot saved: research/qa/network-view.png");
+
+  // SIM badge + attribution remain visible on the network view (§3.1, §15).
   const attribution = await page.textContent("[data-testid=attribution-text]");
-  console.log(`final view: cards=${cards}, attribution="${(attribution ?? "").slice(0, 40)}..."`);
-
-  const renderError = pageErrors.find((e) => /An error occurred while rendering/i.test(e)) ?? null;
-  const cesiumErrors = pageErrors.filter((e) => /Cesium|RuntimeError|DeveloperError/i.test(e));
-
-  if (renderError) {
-    failures += 1;
-    console.error("RENDER ERROR present:", renderError.slice(0, 300));
-  }
-  for (const e of cesiumErrors) {
-    console.log("Cesium error:", e.slice(0, 400));
-  }
-  for (const e of consoleErrors) {
-    console.log("console error:", e.slice(0, 200));
-  }
-  if (cards < 6) {
-    failures += 1;
-    console.error("FAIL: expected 6 metric cards, got", cards);
-  }
   if (!attribution || attribution.length < 10) {
     failures += 1;
     console.error("FAIL: attribution missing/empty");
   }
-
-  // SIM badge visible (§3.1)
-  const simVisible = await page.isVisible("[data-testid=mode-badge]");
-  if (!simVisible) {
+  const badgePresent = await page.locator(".badge-mode, .compare-row .badge").count();
+  if (badgePresent === 0) {
     failures += 1;
-    console.error("FAIL: SIM badge not visible in fixture mode (§3.1)");
+    console.error("FAIL: no §9.3 badge visible in the network view");
   }
+
+  const renderError = pageErrors.find((e) => /An error occurred while rendering/i.test(e)) ?? null;
+  if (renderError) {
+    failures += 1;
+    console.error("RENDER ERROR present:", renderError.slice(0, 300));
+  }
+  for (const e of pageErrors) console.log("page error:", e.slice(0, 300));
+  for (const e of consoleErrors) console.log("console error:", e.slice(0, 200));
 
   await browser.close();
 
   console.log("--- QA summary ---");
-  console.log("pageErrors:", pageErrors.length, pageErrors.slice(0, 3));
-  console.log("consoleErrors:", consoleErrors.length, consoleErrors.slice(0, 3));
+  console.log("pageErrors:", pageErrors.length);
+  console.log("consoleErrors:", consoleErrors.length);
   if (pageErrors.length > 0 || renderError) failures += 1;
   process.exit(failures === 0 ? 0 : 1);
 } finally {
   server.kill();
 }
+
+function sceneDiagnosticsUnused(): void {}

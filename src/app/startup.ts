@@ -37,7 +37,7 @@ export async function startup(options: {
   const shared: DecodedShareState | null = options.shareHash ? decodeShareState(options.shareHash) : null;
   if (shared) {
     state.update({
-      ...(shared.chokepointId ? { chokepointId: shared.chokepointId } : {}),
+      ...(shared.focusChokepointId ? { focusChokepointId: shared.focusChokepointId } : {}),
       ...(shared.timeWindow ? { timeWindow: shared.timeWindow } : {}),
       ...(shared.replayCursor ? { replay: { cursor: shared.replayCursor } } : {}),
       ...(shared.selectedEventId ? { selectedEventId: shared.selectedEventId } : {}),

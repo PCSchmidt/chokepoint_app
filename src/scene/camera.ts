@@ -56,3 +56,32 @@ export function frameForRing(ring: PolygonRing, padding = 1.6): CameraFrame {
     pitchDegrees: -90,
   };
 }
+
+/** A [lat, lon] anchor point (same convention as PolygonRing vertices). */
+export type GeoPoint = readonly [number, number];
+
+/**
+ * Frame a SET of points (the network view: every profile's primary-fence
+ * centroid). Destination is the bbox center; height fits the larger span
+ * with margin. Pure and deterministic; network view uses this for its
+ * landing frame (§4.1 camera framing serves the data view).
+ */
+export function frameForPoints(points: readonly GeoPoint[], padding = 1.15): CameraFrame {
+  if (points.length === 0) throw new Error("frameForPoints requires at least one point");
+  const lats = points.map((p) => p[0]);
+  const lons = points.map((p) => p[1]);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLon = Math.min(...lons);
+  const maxLon = Math.max(...lons);
+  const midLat = (minLat + maxLat) / 2;
+  const spanLatKm = Math.abs(maxLat - minLat) * KM_PER_DEGREE_LAT;
+  const spanLonKm = Math.abs(maxLon - minLon) * KM_PER_DEGREE_LAT * Math.cos((midLat * Math.PI) / 180);
+  return {
+    latitude: midLat,
+    longitude: (minLon + maxLon) / 2,
+    heightMeters: heightForSpanKm(Math.max(spanLatKm, spanLonKm, 1000), padding),
+    headingDegrees: 0,
+    pitchDegrees: -90,
+  };
+}

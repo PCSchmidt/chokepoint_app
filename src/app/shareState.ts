@@ -15,7 +15,8 @@
 import type { AppStateSnapshot } from "./appState";
 
 export interface ShareState {
-  chokepointId: string | null;
+  /** Focused chokepoint; null = network view (no `c` param on the wire). */
+  focusChokepointId: string | null;
   timeWindow: { startAt: string; endAt: string } | null;
   replayCursor: string | null;
   selectedEventId: string | null;
@@ -25,7 +26,7 @@ export interface ShareState {
 }
 
 export function toShareState(snapshot: {
-  chokepointId: string | null;
+  focusChokepointId: string | null;
   timeWindow: { startAt: string; endAt: string } | null;
   replay: { cursor: string | null };
   selectedEventId: string | null;
@@ -34,7 +35,7 @@ export function toShareState(snapshot: {
   overlays: { vessels: boolean; eventCards: boolean; density: boolean };
 }): ShareState {
   return {
-    chokepointId: snapshot.chokepointId,
+    focusChokepointId: snapshot.focusChokepointId,
     timeWindow: snapshot.timeWindow ? { ...snapshot.timeWindow } : null,
     replayCursor: snapshot.replay.cursor,
     selectedEventId: snapshot.selectedEventId,
@@ -46,7 +47,7 @@ export function toShareState(snapshot: {
 
 export function encodeShareState(share: ShareState): string {
   const params = new URLSearchParams();
-  if (share.chokepointId) params.set("c", share.chokepointId);
+  if (share.focusChokepointId) params.set("c", share.focusChokepointId);
   if (share.timeWindow) {
     params.set("t0", share.timeWindow.startAt);
     params.set("t1", share.timeWindow.endAt);
@@ -68,7 +69,7 @@ export function shareUrl(base: string, snapshot: Parameters<typeof toShareState>
 }
 
 export interface DecodedShareState {
-  chokepointId: string | null;
+  focusChokepointId: string | null;
   timeWindow: { startAt: string; endAt: string } | null;
   replayCursor: string | null;
   selectedEventId: string | null;
@@ -79,7 +80,7 @@ export interface DecodedShareState {
 
 /**
  * Decode a share hash. Invalid input (bad timestamps, half a window, garbage)
- * returns null — the caller degrades to the mission launcher honestly, never
+ * returns null — the caller degrades to the network view honestly, never
  * to a half-broken state.
  */
 export function decodeShareState(hash: string): DecodedShareState | null {
@@ -92,7 +93,7 @@ export function decodeShareState(hash: string): DecodedShareState | null {
   if ((t0 && !t1) || (!t0 && t1)) return null;
   const overlayBits = params.get("o");
   return {
-    chokepointId: params.get("c"),
+    focusChokepointId: params.get("c"),
     timeWindow: t0 && t1 ? { startAt: t0, endAt: t1 } : null,
     replayCursor: params.get("r"),
     selectedEventId: params.get("e"),
