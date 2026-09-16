@@ -623,7 +623,7 @@ land profile, each with placeholder geometry awaiting human review.**
 
 No live provider integration and no LLM work exists in this repository.
 
-## Unified network view: Phase 1 complete, Phase 1.5 gated off (2026-09-15)
+## Unified network view: Phase 1 complete, Phase 1.5 presence layer ON (2026-09-16)
 
 - **Phase 1 (substrate) — BUILT**: all five profiles render on ONE globe
   (per-profile prefixed fence/observation entity ids, ONE merged
@@ -637,21 +637,31 @@ No live provider integration and no LLM work exists in this repository.
   idempotent `clearOverlays()` (also fixes the latent agent
   `focus_chokepoint` fence-accumulation bug), watchlist relocated to the
   compare rail, launcher absorbed into `compareRows`. 341 tests green.
-- **Phase 1.5 (presence) — partially built**: P1 boot fly-in, P3 arc dash
-  rotation, and P6 story mode are in. P2 node sprite markers and P4
-  dwell-cohort pulse are IMPLEMENTED but OPT-IN (`?nodes`): they trigger a
-  Cesium render crash.
-- **OPEN BLOCKER — Cesium render crash with nodes+pulses**:
-  `RangeError: Failed to set the 'length' property on 'Array': Invalid array
-  length` at `View.createPotentiallyVisibleSet`/`updateFrustums` stops
-  rendering when node billboards and pulse ellipsoids are on screen
-  together. Probe evidence (pre-cleanup): nodes-only (`nopulse`) is
-  crash-free; nodes+pulses crashes in every mode tried (static pulse,
-  depth-test variants). Pulses-ONLY (plain billboards + pulses) was never
-  tested — that is the next bisect step, followed by NaN/Infinity guards on
-  marker anchors and pulse dimensions (classic non-finite bounding-volume
-  symptom). Static PNGs of the gated view: `research/qa/network-view.png`,
-  `research/qa/network-focused.png` (pre-crash captures).
+- **Phase 1.5 (presence) — ON**: P1 boot fly-in, P2 node sprite markers, P3
+  arc dash rotation, P4 dwell-cohort pulse, and P6 story mode all ship in the
+  default network boot (`?nonodes` / `?nopulse` remain as QA escape hatches).
+- **CLOSED BLOCKER — Cesium render crash (root-caused 2026-09-16)**:
+  `RangeError: Invalid array length` at `updateFrustums` stopped the whole
+  render loop on the first frame with animated pulses. Chain: Cesium
+  `JulianDate` exposes `dayNumber` + `secondsOfDay`; `pulsePixelSize` read a
+  nonexistent `julianDateNumber` -> `undefined * 86400` -> NaN pixelSize ->
+  NaN `_maxPixelSize` (sticky via `Math.max` in the point VAF writer) -> NaN
+  point-collection bounding radius -> NaN command near/far in
+  `createPotentiallyVisibleSet` -> `frustumCommandsList.length = NaN` ->
+  RangeError. Bisect showed the pulse POINT with an animated
+  (`CallbackProperty`) pixelSize was the sole trigger; node billboards and
+  height-reference variants were innocent. Fixed `pulsePixelSize` to use
+  `dayNumber` and the same latent bug in the P3 route-dash seconds math
+  (`rotatePattern(NaN)` silently zeroed the dash pattern). QA: default boot
+  renders nodes=5 + pulses, 0 page/console errors
+  (`research/qa/qa-nodes-on.out`); 341 tests; perf budgets re-measured
+  (`research/perf/perf-after-nodes-on.out`).
+- **Fixed while un-gating**: `scripts/perf-replay.ts` still drove the removed
+  launcher UI (Phase 1 absorbed it) — now focuses via the compare row and
+  clears focus between heap cycles, matching `qa-browser.ts`. The P8 legend
+  overlay intercepted pointer events over the replay timeline's Play button
+  (caught by the perf harness click timeout); the display-only legend is now
+  `pointer-events: none`.
 - **Deferred (per plan)**: multi-profile agent compare intents in
   `agent/tools.ts` (single-scope `runTool` stays); broader intermodal
   facility coverage.

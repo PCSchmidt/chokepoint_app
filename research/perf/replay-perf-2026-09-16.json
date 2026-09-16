@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-09-16T00:42:09.614Z",
+  "budgets": {
+    "renderMeanMs": 33,
+    "renderMaxMs": 250,
+    "scrubMaxMs": 250,
+    "idleRendersPer10s": 2,
+    "memoryGrowthPct": 50,
+    "replayCycles": 5,
+    "scrubCount": 20,
+    "renderSampleMs": 10000,
+    "idleSampleMs": 5000,
+    "idleSettleMs": 8000
+  },
+  "replay": {
+    "renderCount": 37,
+    "meanMs": 4.443243244612539,
+    "maxMs": 59.20000000298023,
+    "p95Ms": 6.799999997019768
+  },
+  "scrub": {
+    "count": 20,
+    "maxMs": 150.90000000596046,
+    "meanMs": 118.32999999895692
+  },
+  "idle": {
+    "renderCount": 0,
+    "meanMs": 0,
+    "maxMs": 0,
+    "p95Ms": 0
+  },
+  "memory": {
+    "samples": [
+      97400000,
+      97400000,
+      97400000,
+      97400000,
+      97400000
+    ],
+    "growthPct": 0,
+    "cycles": 5
+  },
+  "failures": [],
+  "pass": true
+}

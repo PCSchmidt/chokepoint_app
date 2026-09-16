@@ -1,0 +1,14 @@
+(node:33444) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+network view rendered: OK (5 compare rows)
+scene: points=71, fences=18, routes=2, nodes=5, total=96
+merged observation points on scene: 69 (from [{"id":"simulated-fixture-b:mmsi-567001010@2026-09-09T12:00:00Z","hasPoint":true,"hasPolygon":false},{"id":"simulated-fixture:mmsi-567001001@2026-09-09T12:00:00Z","hasPoint":true,"hasPolygon":false}])
+focused long-beach-approach: vessel count = 11
+pixel check (focused): 69/71 vessel points render their color on canvas
+clear focus: network view restored
+story started: "1/5 — One system, five chokepoints"
+story exited
+screenshot saved: research/qa/network-view.png
+--- QA summary ---
+pageErrors: 0
+consoleErrors: 0

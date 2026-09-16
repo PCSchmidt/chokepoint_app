@@ -96,8 +96,10 @@ try {
   page.on("pageerror", (err) => pageErrors.push(String(err)));
 
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("[data-testid^=launcher-]", { timeout: 30_000 });
-  await page.click("[data-testid=launcher-long-beach-approach]");
+  // Phase 1 network boot: the launcher was absorbed into the compare table;
+  // focus long-beach-approach via its compare row (same as qa-browser).
+  await page.waitForSelector("[data-testid^=compare-]", { timeout: 30_000 });
+  await page.click("[data-testid=compare-long-beach-approach]");
   await page.waitForSelector("[data-testid=card-vessel-count]", { timeout: 30_000 });
   await sleep(4000); // globe init + first renders settle
 
@@ -187,9 +189,9 @@ try {
   // --- 4) Memory growth over enable/disable cycles ---
   const heap0 = await page.evaluate(() => (window as unknown as { __chokepointDebug?: Debug }).__chokepointDebug!.getHeap());
   for (let i = 0; i < BUDGETS.replayCycles; i++) {
-    await page.click("[data-testid=back-to-launcher]");
-    await page.waitForSelector("[data-testid^=launcher-]");
-    await page.click("[data-testid=launcher-long-beach-approach]");
+    await page.click("[data-testid=clear-focus]");
+    await page.waitForSelector("[data-testid=focus-hint]", { timeout: 30_000 });
+    await page.click("[data-testid=compare-long-beach-approach]");
     await page.waitForSelector("[data-testid=card-vessel-count]");
     await sleep(1200);
     results.memory.samples.push(await page.evaluate(() => (window as unknown as { __chokepointDebug?: Debug }).__chokepointDebug!.getHeap()));

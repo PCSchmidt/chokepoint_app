@@ -303,6 +303,29 @@ export function createFreightGlobe(
           (e.id.startsWith("node-") || e.id.startsWith("pulse-")),
       );
       for (const entity of toRemove) viewer.entities.remove(entity);
+      // P4 pulse for one marker (local helper so the pulses-only bisect mode
+      // can draw pulses WITHOUT node billboards).
+      const addPulse = (m: NodeMarker): void => {
+        if (m.cohort === 0) return;
+        const animated = m.cohort > 0;
+        const cohort = Math.abs(m.cohort);
+        const pixelSize = animated
+          ? new Cesium.CallbackProperty(
+              (time) => pulsePixelSize(cohort, time ?? viewer.clock.currentTime),
+              false,
+            )
+          : 22;
+        viewer.entities.add({
+          id: `pulse-${m.id}`,
+          position: Cesium.Cartesian3.fromDegrees(m.anchor[1], m.anchor[0], 0),
+          point: {
+            pixelSize,
+            color: Cesium.Color.fromCssColorString("#f59e0b").withAlpha(0.28),
+            outlineWidth: 0,
+            heightReference: Cesium.HeightReference.NONE,
+          },
+        });
+      };
       for (const m of markers) {
         viewer.entities.add({
           id: `node-${m.id}`,
@@ -317,37 +340,7 @@ export function createFreightGlobe(
             sizeInMeters: false,
           },
         });
-        // P4: waiting-cohort pulse — size oscillates with the viewer clock
-        // (render-driven under requestRenderMode; frozen when idle). The
-        // ring marks WHERE vessels wait; it claims nothing about motion.
-        // Render-property constraints (bisected via QA probes):
-        //  - outlineWidth MUST be 0: with an outline, PointVisualizer renders
-        //    the point as a billboard whose texture id embeds the pixel size —
-        //    an animated pixelSize then queues a NEW atlas texture every frame
-        //    (width-0 churn -> repeated render-loop errors).
-        //  - disableDepthTestDistance MUST NOT be Infinity on the pulse: it
-        //    collapses the near plane to 0, far/near -> Infinity, and the
-        //    multi-frustum split overflows (RangeError, rendering stops).
-        // The pulse is a large translucent surface ring; depth testing is fine.
-        if (m.cohort !== 0) {
-          const animated = m.cohort > 0;
-          const cohort = Math.abs(m.cohort);
-          viewer.entities.add({
-            id: `pulse-${m.id}`,
-            position: Cesium.Cartesian3.fromDegrees(m.anchor[1], m.anchor[0], 0),
-            point: {
-              pixelSize: animated
-                ? new Cesium.CallbackProperty(
-                    (time) => pulsePixelSize(cohort, time ?? viewer.clock.currentTime),
-                    false,
-                  )
-                : 22,
-              color: Cesium.Color.fromCssColorString("#f59e0b").withAlpha(0.28),
-              outlineWidth: 0,
-              heightReference: Cesium.HeightReference.NONE,
-            },
-          });
-        }
+        addPulse(m);
       }
       viewer.scene.requestRender();
     },
@@ -377,11 +370,15 @@ export function createFreightGlobe(
           // corridor "flows" during replay/scrub renders and freezes when
           // idle (§12.5: no wall clock in the render path).
           dashPattern: new Cesium.CallbackProperty((time) => {
+            // Cesium JulianDate exposes dayNumber + secondsOfDay. The
+            // previously-assumed `julianDateNumber` is undefined on real
+            // JulianDates -> NaN seconds -> zeroed dash pattern; same latent
+            // bug as the P4 pulse crash (see STATUS.md).
             const t = (time ?? viewer.clock.currentTime) as unknown as {
-              julianDateNumber: number;
+              dayNumber: number;
               secondsOfDay: number;
             };
-            const seconds = t.julianDateNumber * 86400 + t.secondsOfDay;
+            const seconds = t.dayNumber * 86400 + t.secondsOfDay;
             if (routeFlowActive) {
               if (lastFlowSeconds !== null) {
                 flowOffset = (flowOffset + Math.max(0, seconds - lastFlowSeconds)) % 16;

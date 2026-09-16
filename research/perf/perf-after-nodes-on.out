@@ -1,0 +1,20 @@
+
+> chokepoint@0.1.0 perf:replay
+> tsx scripts/perf-replay.ts
+
+(node:39460) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+replay render stats: {"renderCount":37,"meanMs":4.443243244612539,"maxMs":59.20000000298023,"p95Ms":6.799999997019768}
+scrub stats: {"count":20,"maxMs":150.90000000596046,"meanMs":118.32999999895692}
+idle render stats: {"renderCount":0,"meanMs":0,"maxMs":0,"p95Ms":0}
+heap: 97400000 -> 97400000 (0.0% growth)
+# Replay performance profile (§12.5 budgets v1)
+
+- Generated: 2026-09-16T00:42:09.614Z
+- Replay render: count=37, mean=4.4ms, p95=6.8ms, max=59.2ms (budget mean 33ms / max 250ms)
+- Scrub latency (n=20): mean=118.3ms, max=150.9ms (budget 250ms)
+- Idle renders over 5s paused: 0 (budget 1)
+- Heap growth over 5 enable/disable cycles: 0.0% (budget 50%)
+
+**Result: PASS**
+

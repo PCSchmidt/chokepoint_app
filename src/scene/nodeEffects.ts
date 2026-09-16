@@ -85,10 +85,14 @@ export function drawNodeSprite(m: NodeMarker): HTMLCanvasElement {
  * claim about cohort magnitude).
  */
 export function pulsePixelSize(cohort: number, time: unknown): number {
+  // Cesium JulianDate exposes dayNumber + secondsOfDay (never wall-clock).
+  // Reading the previously-assumed `julianDateNumber` yielded undefined ->
+  // NaN pixelSize -> NaN collection bounding radius -> updateFrustums
+  // RangeError (scene-wide render stop). This was the Phase 1.5 P4 crash.
   const seconds =
-    typeof time === "object" && time !== null && "secondsOfDay" in (time as Record<string, unknown>)
-      ? ((time as { julianDateNumber: number }).julianDateNumber * 86400 +
-          (time as { secondsOfDay: number }).secondsOfDay)
+    typeof time === "object" && time !== null && "dayNumber" in (time as Record<string, unknown>)
+      ? (time as { dayNumber: number; secondsOfDay: number }).dayNumber * 86400 +
+        (time as { dayNumber: number; secondsOfDay: number }).secondsOfDay
       : 0;
   const phase = (seconds % 2) / 2; // 0..1 over ~2s
   const wave = 0.5 - 0.5 * Math.cos(phase * 2 * Math.PI); // smooth 0->1->0

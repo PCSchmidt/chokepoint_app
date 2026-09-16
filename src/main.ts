@@ -94,6 +94,18 @@ function samplePixel(gl: WebGLRenderingContext | null, canvas: HTMLCanvasElement
 // Test/diagnostic hook (QA reads entity counts; contains no secrets).
 (window as unknown as { __chokepointDebug?: unknown }).__chokepointDebug = {
   getEntityCount: () => (globe ? globe.viewer.entities.values.length : -1),
+  /** QA diagnostic: camera pose + frustum near/far at read time. */
+  getCameraState: () => {
+    if (!globe) return null;
+    const cam = globe.viewer.camera;
+    const f = cam.frustum as unknown as { near?: number; far?: number };
+    return {
+      position: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+      direction: { x: cam.direction.x, y: cam.direction.y, z: cam.direction.z },
+      near: f.near ?? null,
+      far: f.far ?? null,
+    };
+  },
   getEntityKinds: () =>
     globe
       ? globe.viewer.entities.values.map((e) => ({
@@ -635,10 +647,10 @@ function refreshView(snapshot: AppStateSnapshot): void {
   const windowToUse = snapshot.replay.cursor ? replayWindow(snapshot.replay.cursor) : snapshot.timeWindow;
   const snaps = manager.getAllSnapshots(windowToUse);
   globe.showObservations(networkObservations(snaps).observations, snapshot.selectedEntityId);
-  // Phase 1.5 P2/P4 node markers are OPT-IN (?nodes) pending a Cesium render
-  // crash triggered by nodes+pulses together (STATUS.md, open blocker). The
-  // network view boots clean without them.
-  if (new URLSearchParams(window.location.search).has("nodes")) updateNodeMarkers(snaps);
+  // Phase 1.5 P2/P4 node markers and cohort pulses ship ON (the earlier Cesium render crash was traced to
+  // `julianDateNumber` vs `dayNumber` in pulsePixelSize — see STATUS.md);
+  // ?nonodes / ?nopulse still hide them for QA and escape hatches.
+  updateNodeMarkers(snaps);
 
   renderCompareTable(required("#compare"), compareRows(snaps, (f) => manager.coverageHint(f)), (chokepointId) => {
     state.update({ focusChokepointId: chokepointId });

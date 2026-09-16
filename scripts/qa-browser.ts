@@ -81,6 +81,8 @@ try {
     failures += 1;
     console.error(`FAIL: expected >= 2 route arcs, got ${routeIds}`);
   }
+  // Node markers + cohort pulses ship ON (the Cesium render crash was traced
+  // and fixed: JulianDate uses dayNumber, not julianDateNumber — STATUS.md).
   if (nodeIds !== 5) {
     failures += 1;
     console.error(`FAIL: expected 5 node markers, got ${nodeIds}`);
