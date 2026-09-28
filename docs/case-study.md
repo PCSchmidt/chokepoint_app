@@ -48,7 +48,7 @@ evaluator-accepted claims.
 
 ## Measured results (fixture mode unless noted)
 
-- **Deterministic core**: 326 tests across normalization, geofence machinery,
+- **Deterministic core**: 341 tests across normalization, geofence machinery,
   health states, metrics, detectors, adapters, agent, UI render, PWA, and
   server integration — all green in CI without credentials or network.
 - **Detector evaluation** (`npm run eval`): v1 labeled suite — precision 1.0,

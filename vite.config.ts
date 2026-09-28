@@ -11,6 +11,12 @@ export default defineConfig({
   // main.ts/index.html use the same convention (see the Pages ADR note in
   // STATUS.md). Local dev and docker serve are unaffected (they serve "/").
   base: "./",
+  // Fixed dev port, not Vite's default 5173: that default is also the port other
+  // local Vite projects (e.g. sitework-ai's dashboard) publish, and without
+  // strictPort Vite silently hops to the next free port, so which app lands where
+  // depended on start order. strictPort fails loudly instead. The QA and perf
+  // harnesses pin their own ports (4173, 4174); `npm run serve` uses 8787.
+  server: { port: 5174, strictPort: true },
   define: {
     CESIUM_BASE_URL: JSON.stringify("./cesium/"),
   },

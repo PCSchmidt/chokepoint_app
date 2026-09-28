@@ -59,7 +59,7 @@ You can drive it three ways:
 | Geofences | 9 reviewed v1 fences (6 maritime + 3 multimodal), named review owner, per-vertex provenance |
 | Verified agent | typed intents → allowlisted tools → evidence bundles → claim-evaluator-v1 → accepted-claims-only answers; groundedness 25/25 |
 | Multimodal | air (adsb.lol, operator cohorts inferred — never asserted) + land (CBP wait times, OBSERVED facility metrics per ADR-0015); rail deferred on evidence (ADR-0014) |
-| Tests | 326 passing, offline and deterministic (`npm test`) |
+| Tests | 341 passing, offline and deterministic (`npm test`) |
 | Honest scope | portfolio project; all on-screen data SIMULATED; no auth, no TLS, no multi-user serving; browser app never calls live providers |
 
 ## Architecture at a glance
@@ -103,7 +103,7 @@ Where things live:
 | `src/ui/`, `src/overlays/` | Launcher, freight HUD, timeline, evidence drawer, agent panel, watchlist, event cards |
 | `src/scene/` | Cesium globe, keyless map stacks, render governor (bounded cohorts), deterministic replay controller |
 | `src/telemetry/`, `src/server/` | Health/readiness (§10.3), bounded Prometheus registry (§13.1), redacted JSON logs (§13.3), static+API server |
-| `tests/` | 326 offline tests incl. labeled evaluation suites (detector + groundedness) |
+| `tests/` | 341 offline tests incl. labeled evaluation suites (detector + groundedness) |
 | `research/` | Provider terms research (AIS + multimodal), geofence candidates with per-vertex provenance |
 | `evaluation-reports/` | Committed detector + groundedness reports (§12.6, regenerate via npm scripts) |
 | `docs/decisions/` | 15 ADRs — every non-trivial decision recorded |
@@ -120,9 +120,9 @@ Where things live:
 git clone https://github.com/PCSchmidt/chokepoint_app
 cd chokepoint_app
 npm install
-npm test            # 326 offline, deterministic tests (no network, no keys)
+npm test            # 341 offline, deterministic tests (no network, no keys)
 
-npm run dev         # vite dev server, fixture-mode UI
+npm run dev         # vite dev server, fixture-mode UI: http://localhost:5174
 # or the production build + local stack:
 npm run build
 npm run serve       # serves dist/ + /api/health + /api/ready + /metrics on :8787
@@ -232,7 +232,7 @@ cause, or completeness** (see `NON_CLAIMS.md`).
 All numbers are committed artifacts, regenerable from the repo
 (`evaluation-reports/`, `research/perf/`):
 
-- **Deterministic suite**: 326 tests across normalization, geofence machinery,
+- **Deterministic suite**: 341 tests across normalization, geofence machinery,
   health states, metrics, detectors, adapters, agent, UI render, PWA, server
   integration — all offline, CI-green without credentials or network.
 - **Detector evaluation** (labeled scenarios): precision 1.0, recall 0.75,
@@ -292,8 +292,14 @@ All numbers are committed artifacts, regenerable from the repo
 
 Requirements: Node 20+ and npm (dev), Docker Desktop (observability stack).
 
+Local ports: `npm run dev` → 5174 (fixed, with `strictPort`, so it fails loudly
+rather than drifting if the port is taken); `npm run serve` / Docker app → 8787;
+Prometheus → 9090; Grafana → 3000; the browser QA and perf harnesses start
+their own Vite servers on 4173 and 4174. Vite's default 5173 is left free for
+other local projects.
+
 ```
-npm install && npm test      # 326 offline tests
+npm install && npm test      # 341 offline tests
 npm run build && npm run serve   # production build + local API/metrics on :8787
 docker compose up -d --build # app + prometheus + grafana (fixture mode, no credentials)
 docker compose down
@@ -309,7 +315,7 @@ docker compose down
 - **Logs** (§13.3): one JSON line per request (correlation id, request id,
   status, duration, route, error class) with structural redaction of
   key/token/authorization patterns; there is no field for secrets.
-- **CI** runs lint + 326 tests + build on every push; the Pages workflow
+- **CI** runs lint + 341 tests + build on every push; the Pages workflow
   deploys the SPA on main. Docker images are built locally; nothing is pushed
   to any registry.
 - **Evaluation artifacts** (§12.6): `evaluation-reports/` (detector +
@@ -342,7 +348,7 @@ never assumed:
 ### Verify the claims (a reviewer's path)
 
 ```bash
-npm test                # 326 tests — includes every claim below that is testable offline
+npm test                # 341 tests — includes every claim below that is testable offline
 npm run eval:agent      # regenerate the groundedness report (25/25)
 npm run eval            # regenerate the detector report (precision 1.0 / recall 0.75)
 npm run perf:replay     # regenerate the §12.5 budget profile (PASS)

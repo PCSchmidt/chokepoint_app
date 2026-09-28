@@ -665,3 +665,14 @@ No live provider integration and no LLM work exists in this repository.
 - **Deferred (per plan)**: multi-profile agent compare intents in
   `agent/tools.ts` (single-scope `runTool` stays); broader intermodal
   facility coverage.
+
+## Dev server port fixed at 5174 (2026-09-28)
+
+- `vite.config.ts` now sets `server: { port: 5174, strictPort: true }`. Before, `npm run dev`
+  took Vite's default 5173, which another local project (sitework-ai's dashboard) also
+  publishes; Vite silently hopped to the next free port, so which app landed where
+  depended on start order. Verified: the dev server answers on 5174 and 5173 stays free; a
+  second instance exits with "Port 5174 is already in use" instead of drifting.
+- Unchanged: the QA and perf harnesses pin 4173/4174, `npm run serve` and the Docker app
+  use 8787. README local-ports note and the stale test count (326 → 341, verified) updated;
+  lint, 341 tests, and build pass.
